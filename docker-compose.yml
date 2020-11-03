@@ -1,0 +1,14 @@
+version: "3.x"
+services:
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - shareapp-network
+
+networks:
+  shareapp-network:
+    driver: bridge
