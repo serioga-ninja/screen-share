@@ -1,12 +1,4 @@
 import { desktopCapturer } from 'electron';
-import * as React from 'react';
-import * as ReactDOM from 'react-dom';
-
-const Index = () => {
-  return <div>Hello React!</div>;
-};
-
-ReactDOM.render(<Index/>, document.getElementById('app'));
 
 function handleStream(stream: MediaStream) {
   const video = document.querySelector('video')
@@ -37,11 +29,11 @@ desktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources =
             }
           } as any
         })
-        handleStream(stream)
+        handleStream(stream);
       } catch (e) {
         handleError(e)
       }
       return
     }
   }
-})
+});
