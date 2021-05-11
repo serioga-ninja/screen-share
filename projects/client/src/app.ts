@@ -1,39 +1,49 @@
 import { desktopCapturer } from 'electron';
+import { io } from 'socket.io-client';
 
-function handleStream(stream: MediaStream) {
-  const video = document.querySelector('video')
-  if (!video) return;
+const socket = io('http://localhost:3000');
 
-  video.srcObject = stream
-  video.onloadedmetadata = (e) => video.play()
-}
+socket.on('connect_error', (err) => {
+  console.log(`connect_error due to ${err.message}`);
+});
 
-function handleError(e: any) {
-  console.log(e)
-}
+socket.on('hi', () => {
+  console.log('a user connected');
 
-desktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources => {
-  for (const source of sources) {
-    if (source.name === 'Entire Screen') {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: source.id,
-              minWidth: 1280,
-              maxWidth: 1280,
-              minHeight: 720,
-              maxHeight: 720
-            }
-          } as any
-        })
-        handleStream(stream);
-      } catch (e) {
-        handleError(e)
-      }
-      return
+  desktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources => {
+    const source = sources[0];
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: source.id,
+            minWidth: 1280,
+            maxWidth: 1280,
+            minHeight: 720,
+            maxHeight: 720
+          }
+        } as any
+      });
+
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+      mediaRecorder.ondataavailable = (event) => {
+        console.log('data-available');
+        console.log(event.data);
+        socket.emit('video-data', event.data);
+      };
+      mediaRecorder.start(1000);
+    } catch (e) {
+      console.log(e);
     }
-  }
+
+    return;
+  });
+});
+
+socket.on('disconnect', () => {
+  console.log('user disconnected');
 });

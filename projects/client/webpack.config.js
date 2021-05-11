@@ -11,14 +11,14 @@ module.exports = [
   {
     mode: 'development',
     watch: true,
-    entry: './src/app.tsx',
+    entry: './src/app.ts',
     target: 'electron-renderer',
     devtool: 'source-map',
     optimization: {
       minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
     },
     resolve: {
-      extensions: ['.d.ts', '.ts', '.tsx', '.js', '.json'],
+      extensions: ['.ts', '.tsx', '.js', '.json'],
     },
     module: {
       rules: [
@@ -60,7 +60,7 @@ module.exports = [
             loader: 'babel-loader',
             options: {
               ...JSON.parse(
-                  fs.readFileSync(path.resolve(clientRootFolder, '.babelrc'))
+                fs.readFileSync(path.resolve(clientRootFolder, '.babelrc'))
               ),
             },
           },
