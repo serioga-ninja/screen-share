@@ -11,7 +11,7 @@ module.exports = [
   {
     mode: 'development',
     watch: true,
-    entry: './src/app.ts',
+    entry: './src/app.tsx',
     target: 'electron-renderer',
     devtool: 'source-map',
     optimization: {

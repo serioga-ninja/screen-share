@@ -1,5 +1,7 @@
 import { desktopCapturer } from 'electron';
 import { io } from 'socket.io-client';
+import * as ReactDOM from 'react-dom';
+import React from 'react';
 
 const socket = io('http://localhost:3000');
 
@@ -9,7 +11,13 @@ socket.on('connect_error', (err) => {
 
 socket.on('hi', () => {
   console.log('a user connected');
+});
 
+socket.on('disconnect', () => {
+  console.log('user disconnected');
+});
+
+const startRecording = () => {
   desktopCapturer.getSources({ types: ['window', 'screen'] }).then(async sources => {
     const source = sources[0];
 
@@ -35,6 +43,7 @@ socket.on('hi', () => {
         console.log(event.data);
         socket.emit('video-data', event.data);
       };
+
       mediaRecorder.start(1000);
     } catch (e) {
       console.log(e);
@@ -42,8 +51,21 @@ socket.on('hi', () => {
 
     return;
   });
-});
+}
 
-socket.on('disconnect', () => {
-  console.log('user disconnected');
-});
+const App = () => {
+
+  return <div>
+    <div className="preview">
+      <video id="preview" autoPlay></video>
+    </div>
+    <div className="buttons">
+      Buttons
+    </div>
+  </div>;
+}
+
+ReactDOM.render(
+  <App/>,
+  document.getElementById('app')
+);
