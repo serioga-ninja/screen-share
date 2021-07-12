@@ -1,86 +1,72 @@
-import express from 'express';
-import { createReadStream, createWriteStream, statSync } from 'fs';
-import { stat } from 'fs/promises';
+import os from 'os';
+import nodeStatic from 'node-static';
 import http from 'http';
-import * as path from 'path';
+import path from 'path';
 import { Server } from 'socket.io';
 
-const app = express();
-const server = http.createServer(app);
-server.keepAliveTimeout = 60000 * 2;
-const io = new Server(server);
+const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), '..', 'client', 'dist'));
+const app = http.createServer(function (req, res) {
+  fileServer.serve(req, res);
+}).listen(8080);
 
-const fileId = 'test';
+const io = new Server(app);
 
-app.get('/video/:id', (req, res) => {
-  res.set('Content-Type', 'text/html');
-  res.send(`
-    <video controls muted autoPlay style="width: 100%; height: 100%">
-        <source src="http://localhost:3000/stream/${req.params.id}" type="video/webm">
-    </video>
-  `);
-});
+io.sockets.on('connection', function (socket) {
 
-app.get('/stream/:id', async (req, res) => {
-  const videoPath = `videos/${req.params.id}.webm`;
-  const videoStat = await stat(
-    path.resolve(__dirname, 'videos', `1620812253337.webm`)
-  );
-  const fileSize = videoStat.size;
-  const videoRange = req.headers.range;
-  if (videoRange) {
-    const parts = videoRange.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1]
-      ? parseInt(parts[1], 10)
-      : fileSize - 1;
-    const chunksize = (end - start) + 1;
-    const file = createReadStream(videoPath, { start, end });
-    const head = {
-      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunksize,
-      'Content-Type': 'video/webm',
-    };
-
-    res.writeHead(206, head);
-
-    file.pipe(res);
-  } else {
-    const head = {
-      'Content-Length': fileSize,
-      'Content-Type': 'video/webm',
-    };
-
-    res.writeHead(200, head);
-
-    createReadStream(videoPath).pipe(res);
+  // convenience function to log server messages on the client
+  function log(...args: string[]) {
+    const array = ['Message from server:'];
+    array.push.apply(array, args);
+    socket.emit('log', array);
   }
-});
 
-io.on('connection', (socket) => {
-  console.log('a user connected');
-
-  const filePath = path.resolve(__dirname, 'videos', `${fileId}.webm`);
-  console.log('filePath', filePath);
-
-  const ws = createWriteStream(
-    filePath
-  );
-
-  socket.on('video-data', (data) => {
-    ws.write(data);
+  socket.on('message', function (message) {
+    log('Client said: ', message);
+    // for a real app, would be room-only (not broadcast)
+    io.sockets
+      .in(message.roomId)
+      .except(socket.id)
+      .emit('message', message);
+    // socket.broadcast.emit('message', message);
   });
 
-  socket.on('disconnect', (reason) => {
-    ws.close();
+  socket.on('create or join', function (room) {
+    log('Received request to create or join room ' + room);
+
+    const clientsInRoom = io.sockets.adapter.rooms.get(room);
+    const numClients = clientsInRoom?.size || 0;
+
+    log('Room ' + room + ' now has ' + numClients + ' client(s)');
+
+    if (numClients === 0) {
+      socket.join(room);
+      log('Client ID ' + socket.id + ' created room ' + room);
+      socket.emit('created', room, socket.id);
+    } else {
+      log('Client ID ' + socket.id + ' joined room ' + room);
+
+      socket.join(room);
+      io.sockets.in(room).emit('joined', room);
+    }
   });
 
-  socket.emit('hi', {
-    filePath: `http://localhost:3000/stream/${fileId}`
+  socket.on('ipaddr', function () {
+    const ifaces = os.networkInterfaces();
+    for (let dev in ifaces) {
+      ifaces[dev]?.forEach(function (details) {
+        if (details.family === 'IPv4' && details.address !== '127.0.0.1') {
+          socket.emit('ipaddr', details.address);
+        }
+      });
+    }
   });
-});
 
-server.listen(3000, () => {
-  console.log('listening on *:3000');
+  socket.on('disconnect', function (reason) {
+    console.log(`Peer or server disconnected. Reason: ${reason}.`);
+    socket.broadcast.emit('bye');
+  });
+
+  socket.on('bye', function (room) {
+    console.log(`Peer said bye on room ${room}.`);
+  });
 });

@@ -11,11 +11,10 @@ module.exports = [
   {
     mode: 'development',
     watch: true,
-    entry: './src/app.tsx',
-    target: 'electron-renderer',
-    devtool: 'source-map',
+    entry: './src/index.ts',
+    devtool: 'eval-source-map',
     optimization: {
-      minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
+      minimizer: [new OptimizeCSSAssetsPlugin({})],
     },
     resolve: {
       extensions: ['.ts', '.tsx', '.js', '.json'],

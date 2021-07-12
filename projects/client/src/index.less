@@ -1,22 +1,23 @@
-html, body, video {
-  height: 100%;
-  width: 100%;
-  margin: 0;
+@import url('https://fonts.googleapis.com/css2?family=Syne+Mono&display=swap');
+
+body {
+  font-family: 'Syne Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+  margin: 80px 10px;
 }
 
 video {
-  display: block;
+  width: 40vw;
+  height: 30vw;
+  margin: 2rem;
+  background: #2c3e50;
 }
 
-.hidden {
-  display: none !important;
-}
-
-.app {
+.videos {
   display: flex;
-  flex-direction: column;
-
-  .preview {
-    max-height: 200px;
-  }
+  align-items: center;
+  justify-content: center;
 }
