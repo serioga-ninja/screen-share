@@ -1,4 +1,28 @@
 import { io } from 'socket.io-client';
+import { ISocketMessage } from '../../shared/interfaces/all';
+import { connectionService } from './connection.service';
 
-export const socket = io('http://localhost:8080');
+export const socket = io('ws://192.168.2.11:8080');
 
+
+// Leaving rooms and disconnecting from peers.
+socket.on('disconnect', function (reason) {
+  console.log(`Disconnected: ${reason}.`);
+});
+
+socket.on('bye', function (room) {
+  console.log(`Peer leaving room ${room}.`);
+});
+
+
+socket.on('ipaddr', function (ipaddr) {
+  console.log('Server IP address is: ' + ipaddr);
+});
+
+socket.on('created', async function (clientId: string) {
+  console.log('Created room - my client ID is ', clientId);
+});
+
+socket.on('message', function (message: ISocketMessage) {
+  connectionService.handleSignalingData(message);
+});

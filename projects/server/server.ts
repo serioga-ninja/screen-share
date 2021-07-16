@@ -3,13 +3,19 @@ import nodeStatic from 'node-static';
 import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io';
+import { IJoinedToRoom, ISocketMessage } from '../shared/interfaces/all';
 
 const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), '..', 'client', 'dist'));
 const app = http.createServer(function (req, res) {
   fileServer.serve(req, res);
 }).listen(8080);
 
-const io = new Server(app);
+const io = new Server(app, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
 
 io.sockets.on('connection', function (socket) {
 
@@ -20,14 +26,12 @@ io.sockets.on('connection', function (socket) {
     socket.emit('log', array);
   }
 
-  socket.on('message', function (message) {
-    log('Client said: ', message);
-    // for a real app, would be room-only (not broadcast)
-    io.sockets
-      .in(message.roomId)
-      .except(socket.id)
-      .emit('message', message);
-    // socket.broadcast.emit('message', message);
+  socket.on('message', function (message: ISocketMessage) {
+    if (message.sendToClientId) {
+      io.to(message.sendToClientId).emit('message', message);
+    } else {
+      io.sockets.in(message.roomId).emit('message', message);
+    }
   });
 
   socket.on('create or join', function (room) {
@@ -41,13 +45,21 @@ io.sockets.on('connection', function (socket) {
     if (numClients === 0) {
       socket.join(room);
       log('Client ID ' + socket.id + ' created room ' + room);
-      socket.emit('created', room, socket.id);
+      socket.emit('created', socket.id);
     } else {
       log('Client ID ' + socket.id + ' joined room ' + room);
 
       socket.join(room);
-      io.sockets.in(room).emit('joined', room);
+
+      io.sockets
+        .in(room)
+        .except(socket.id)
+        .emit('joined', socket.id);
+
+      socket.emit('joined to room');
     }
+
+    socket.emit('hello', socket.id);
   });
 
   socket.on('ipaddr', function () {

@@ -12,7 +12,7 @@ module.exports = [
     mode: 'development',
     watch: true,
     entry: './src/index.ts',
-    devtool: 'eval-source-map',
+    devtool: 'inline-source-map',
     optimization: {
       minimizer: [new OptimizeCSSAssetsPlugin({})],
     },

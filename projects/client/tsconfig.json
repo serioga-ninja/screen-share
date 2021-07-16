@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "jsx": "react",
     "baseUrl": ".",
-    "rootDir": "./"
+    "rootDir": "./",
+    "target": "ES5",
+    "strict": false
   }
 }

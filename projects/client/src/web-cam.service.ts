@@ -1,12 +1,16 @@
 export class WebCamService extends EventTarget {
-  private _stream: MediaStream | undefined;
+  private _stream: MediaStream = new MediaStream();
   private _recording = false;
 
   get recording() {
     return this._recording;
   }
 
-  async start(): Promise<MediaStream | undefined> {
+  get stream() {
+    return this._stream;
+  }
+
+  async start(): Promise<MediaStream> {
     console.log('Getting user media (video) ...');
 
     try {
@@ -20,6 +24,8 @@ export class WebCamService extends EventTarget {
       return this._stream;
     } catch (e) {
       alert('getUserMedia() error: ' + e.name);
+
+      return new MediaStream();
     }
   }
 }
