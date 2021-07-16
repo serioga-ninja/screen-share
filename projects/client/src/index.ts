@@ -1,5 +1,6 @@
 'use strict';
 import { ISocketMessage } from '../../shared/interfaces/all';
+import { App, EAppEvents } from './app';
 import { connectionService, EConnectionServiceEvents } from './connection.service';
 import { socket } from './socket-connection';
 import { webCamService } from './web-cam.service';
@@ -36,42 +37,6 @@ window.addEventListener('unload', function () {
   socket.emit('bye', room);
 });
 
-
-socket.on('joined', async function (clientId: string) {
-  console.log(`User ${clientId} joined`);
-
-  const pc = await connectionService.createPeerConnectionForSID(clientId);
-
-  await webCamService.start();
-
-  // Push tracks from local stream to peer connection
-  webCamService.stream?.getTracks().forEach((track) => {
-    pc.addTrack(track, webCamService.stream);
-  });
-
-  await connectionService.sendOffer(clientId);
-
-  // Pull tracks from remote stream, add to video stream
-  pc.ontrack = (event) => {
-    const remoteStream = new MediaStream();
-    const remoteStreamVideoBLock = document.createElement('video');
-
-    remoteStreamVideoBLock.setAttribute('autoplay', '');
-    remoteStreamVideoBLock.setAttribute('playsinline', '');
-    remoteStreamsBlock.append(remoteStreamVideoBLock);
-
-    remoteStreamVideoBLock.srcObject = remoteStream;
-
-    event.streams[0].getTracks().forEach((track) => {
-      remoteStream.addTrack(track);
-    });
-  };
-
-  if (!webcamVideo.srcObject) webcamVideo.srcObject = webCamService.stream;
-
-  connections.set(clientId, pc);
-});
-
 function randomToken() {
   return Math.floor((1 + Math.random()) * 1e16).toString(16).substring(1);
 }
@@ -89,3 +54,41 @@ export function sendMessage(message: Record<string, unknown>, toClientId?: strin
 
   socket.emit('message', sendingMessage);
 }
+
+const app = new App(
+  socket, webCamService, connectionService
+);
+
+app.addEventListener(EAppEvents.OfferAccepted, async (event: any) => {
+  const { pc, sendByClientId } = event.detail;
+
+  // Pull tracks from remote stream, add to video stream
+  pc.ontrack = (event) => {
+    const remoteStream = new MediaStream();
+    const remoteStreamVideoBLock = document.createElement('video');
+
+    remoteStreamVideoBLock.setAttribute('id', sendByClientId);
+    remoteStreamVideoBLock.setAttribute('autoplay', '');
+    remoteStreamVideoBLock.setAttribute('playsinline', '');
+    remoteStreamsBlock.append(remoteStreamVideoBLock);
+
+    remoteStreamVideoBLock.srcObject = remoteStream;
+
+    event.streams[0].getTracks().forEach((track) => {
+      remoteStream.addTrack(track);
+    });
+  };
+  await webCamService.start();
+
+  if (!webcamVideo.srcObject) webcamVideo.srcObject = webCamService.stream;
+
+  connections.set(sendByClientId, pc);
+});
+
+
+app.addEventListener(EAppEvents.UserLeft, (event: any) => {
+  const { clientId } = event.detail;
+
+  document.getElementById(clientId)?.remove();
+  connections.delete(clientId);
+});

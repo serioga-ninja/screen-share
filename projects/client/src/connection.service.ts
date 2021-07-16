@@ -19,14 +19,34 @@ const defaultPCConfiguration = {
 };
 
 export class ConnectionService extends EventTarget {
-  private readonly peers: Record<string, RTCPeerConnection>;
-  private readonly pendingCandidates: Record<string, any[]>;
+  private readonly _peers: Record<string, RTCPeerConnection>;
+  private readonly _pendingCandidates: Record<string, any[]>;
+
+  get peers() {
+    return this._peers;
+  }
 
   constructor(private _socket: Socket, private _webCamService: WebCamService) {
     super();
 
-    this.pendingCandidates = {};
-    this.peers = {};
+    this._pendingCandidates = {};
+    this._peers = {};
+  }
+
+  hasPeerWithClient(clientId: string): boolean {
+    return clientId in this._peers;
+  }
+
+  hasPendingCandidate(clientId: string): boolean {
+    return clientId in this._pendingCandidates;
+  }
+
+  resetPendingCandidates(clientId: string) {
+    this._pendingCandidates[clientId] = [];
+  }
+
+  addToPendingCandidates(clientId: string, candidate) {
+    this._pendingCandidates[clientId].push(candidate);
   }
 
   createPeerConnection(clientId: string): RTCPeerConnection {
@@ -47,89 +67,54 @@ export class ConnectionService extends EventTarget {
     return pc;
   }
 
-  async createPeerConnectionForSID(clientId: string): Promise<RTCPeerConnection> {
-    this.peers[clientId] = this.createPeerConnection(clientId);
+  setRemoteDescription(clientId: string, payload): Promise<void> {
+    return this._peers[clientId].setRemoteDescription(
+      new RTCSessionDescription(payload)
+    );
+  }
 
-    return this.peers[clientId];
+  async createPeerConnectionForSID(clientId: string): Promise<RTCPeerConnection> {
+    this._peers[clientId] = this.createPeerConnection(clientId);
+
+    return this._peers[clientId];
   }
 
   async sendOffer(clientId: string) {
     console.log(`Sending offer to ${clientId}`);
 
-    const sdp = await this.peers[clientId].createOffer();
+    const sdp = await this._peers[clientId].createOffer();
 
     await this.setAndSendLocalDescription(clientId, sdp);
   }
 
-  async handleSignalingData(message: ISocketMessage) {
-    const { sendByClientId, payload } = message;
-
-    console.log(`Received ${payload.type} from ${sendByClientId}`);
-
-    switch (payload.type) {
-      case 'offer':
-        await this.createPeerConnectionForSID(sendByClientId);
-
-        await this.peers[sendByClientId].setRemoteDescription(
-          new RTCSessionDescription(payload)
-        );
-
-        await this._webCamService.start();
-
-        // Push tracks from local stream to peer connection
-        this._webCamService.stream?.getTracks().forEach((track) => {
-          this.peers[sendByClientId].addTrack(track, this._webCamService.stream);
-        });
-
-        // TODO: apply media streams to the video elements
-
-        await this.sendAnswer(sendByClientId);
-
-        this.addPendingCandidates(sendByClientId);
-        break;
-      case 'answer':
-        await this.peers[sendByClientId].setRemoteDescription(
-          new RTCSessionDescription(payload)
-        );
-        break;
-      case 'candidate':
-        if (sendByClientId in this.peers) {
-          await this.peers[sendByClientId].addIceCandidate(new RTCIceCandidate(payload.candidate));
-        } else {
-          if (!(sendByClientId in this.pendingCandidates)) {
-            this.pendingCandidates[sendByClientId] = [];
-          }
-          this.pendingCandidates[sendByClientId].push(payload.candidate)
-        }
-        break;
-    }
-  }
-
-  private async sendAnswer(clientId: string) {
-    const sdp = await this.peers[clientId].createAnswer();
-    await this.setAndSendLocalDescription(clientId, sdp);
+  async sendAnswer(clientId: string) {
+    return this._peers[clientId].createAnswer();
   };
 
-  private async setAndSendLocalDescription(clientId: string, sessionDescription: RTCSessionDescriptionInit) {
-    await this.peers[clientId].setLocalDescription(sessionDescription);
+  async setAndSendLocalDescription(clientId: string, sessionDescription: RTCSessionDescriptionInit) {
+    await this._peers[clientId].setLocalDescription(sessionDescription);
 
     console.log(`Sending ${sessionDescription.type} to ${clientId}`, sessionDescription);
 
     sendMessage({ type: sessionDescription.type, sdp: sessionDescription.sdp }, clientId);
   }
 
+  addIceCandidate(clientId: string, payload) {
+    return this.peers[clientId].addIceCandidate(new RTCIceCandidate(payload.candidate));
+  }
+
   addPendingCandidates(clientId: string) {
-    if (clientId in this.pendingCandidates) {
-      this.pendingCandidates[clientId].forEach(candidate => {
-        this.peers[clientId].addIceCandidate(new RTCIceCandidate(candidate))
+    if (clientId in this._pendingCandidates) {
+      this._pendingCandidates[clientId].forEach(candidate => {
+        this._peers[clientId].addIceCandidate(new RTCIceCandidate(candidate))
       });
     }
   }
 
   private onICECandidate(event: RTCPeerConnectionIceEvent, clientId: string) {
-    console.log('icecandidate event:', event);
-
     if (event.candidate) {
+      console.log(`Sending candidate to ${clientId}`, event.candidate);
+
       sendMessage({
         type: 'candidate',
         label: event.candidate.sdpMLineIndex,

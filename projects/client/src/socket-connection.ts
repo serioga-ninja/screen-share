@@ -10,19 +10,10 @@ socket.on('disconnect', function (reason) {
   console.log(`Disconnected: ${reason}.`);
 });
 
-socket.on('bye', function (room) {
-  console.log(`Peer leaving room ${room}.`);
-});
-
-
 socket.on('ipaddr', function (ipaddr) {
   console.log('Server IP address is: ' + ipaddr);
 });
 
 socket.on('created', async function (clientId: string) {
   console.log('Created room - my client ID is ', clientId);
-});
-
-socket.on('message', function (message: ISocketMessage) {
-  connectionService.handleSignalingData(message);
 });
