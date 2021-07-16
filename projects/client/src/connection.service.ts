@@ -1,12 +1,14 @@
 import { Socket } from 'socket.io-client';
-import { ISocketMessage } from '../../shared/interfaces/all';
 import { sendMessage } from './index';
 import { socket } from './socket-connection';
 import { WebCamService, webCamService } from './web-cam.service';
 
 export enum EConnectionServiceEvents {
-  AddStream = 'addstream',
-  PeerConnectionCreated = 'peerconnectioncreated',
+  PeerConnectionTrack = 'peerconnectiontrack',
+}
+
+export interface IOnPeerConnectionOptions {
+  ontrack: (ev: RTCTrackEvent) => any;
 }
 
 const defaultPCConfiguration = {
@@ -49,20 +51,14 @@ export class ConnectionService extends EventTarget {
     this._pendingCandidates[clientId].push(candidate);
   }
 
-  createPeerConnection(clientId: string): RTCPeerConnection {
+  createPeerConnection(clientId: string, options: IOnPeerConnectionOptions): RTCPeerConnection {
     console.log(`Creating Peer connection for ${clientId}`);
 
     const pc = new RTCPeerConnection(defaultPCConfiguration);
 
     // send any ice candidates to the other peer
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
-
-    this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.PeerConnectionCreated, {
-      detail: {
-        pc: pc,
-        clientId
-      }
-    }));
+    pc.ontrack = options.ontrack;
 
     return pc;
   }
@@ -73,8 +69,8 @@ export class ConnectionService extends EventTarget {
     );
   }
 
-  async createPeerConnectionForSID(clientId: string): Promise<RTCPeerConnection> {
-    this._peers[clientId] = this.createPeerConnection(clientId);
+  async createPeerConnectionForSID(clientId: string, options: IOnPeerConnectionOptions): Promise<RTCPeerConnection> {
+    this._peers[clientId] = this.createPeerConnection(clientId, options);
 
     return this._peers[clientId];
   }

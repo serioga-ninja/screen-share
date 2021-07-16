@@ -22,7 +22,12 @@ export class App extends EventTarget {
     _socket.on('joined', async (clientId: string) => {
       console.log(`User ${clientId} joined`);
 
-      const pc = await _connectionService.createPeerConnectionForSID(clientId);
+      const pc = await _connectionService.createPeerConnectionForSID(
+        clientId,
+        {
+          ontrack: (event: RTCTrackEvent) => this.onPeerConnectionTrack(clientId, event)
+        }
+      );
 
       await this.addTracksToPeerConnection(pc);
 
@@ -55,14 +60,12 @@ export class App extends EventTarget {
 
     switch (payload.type) {
       case 'offer':
-        const pc = await this._connectionService.createPeerConnectionForSID(sendByClientId);
-
-        this.dispatchEvent(new CustomEvent(EAppEvents.OfferAccepted, {
-          detail: {
-            pc: pc,
-            sendByClientId
+        const pc = await this._connectionService.createPeerConnectionForSID(
+          sendByClientId,
+          {
+            ontrack: (event: RTCTrackEvent) => this.onPeerConnectionTrack(sendByClientId, event)
           }
-        }));
+        );
 
         await this._connectionService.setRemoteDescription(sendByClientId, payload);
         await this.addTracksToPeerConnection(pc);
@@ -72,6 +75,13 @@ export class App extends EventTarget {
         await this._connectionService.setAndSendLocalDescription(sendByClientId, sdp);
 
         this._connectionService.addPendingCandidates(sendByClientId);
+
+        this.dispatchEvent(new CustomEvent(EAppEvents.OfferAccepted, {
+          detail: {
+            pc: pc,
+            sendByClientId
+          }
+        }));
         break;
       case 'answer':
         await this._connectionService.setRemoteDescription(
@@ -99,6 +109,15 @@ export class App extends EventTarget {
     this._webCamService.stream?.getTracks().forEach((track) => {
       pc.addTrack(track, this._webCamService.stream);
     });
+  }
+
+  private onPeerConnectionTrack(clientId: string, event: RTCTrackEvent) {
+    this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.PeerConnectionTrack, {
+      detail: {
+        clientId,
+        onTrackEvent: event
+      }
+    }));
   }
 
 }

@@ -62,22 +62,6 @@ const app = new App(
 app.addEventListener(EAppEvents.OfferAccepted, async (event: any) => {
   const { pc, sendByClientId } = event.detail;
 
-  // Pull tracks from remote stream, add to video stream
-  pc.ontrack = (event) => {
-    const remoteStream = new MediaStream();
-    const remoteStreamVideoBLock = document.createElement('video');
-
-    remoteStreamVideoBLock.setAttribute('id', sendByClientId);
-    remoteStreamVideoBLock.setAttribute('autoplay', '');
-    remoteStreamVideoBLock.setAttribute('playsinline', '');
-    remoteStreamsBlock.append(remoteStreamVideoBLock);
-
-    remoteStreamVideoBLock.srcObject = remoteStream;
-
-    event.streams[0].getTracks().forEach((track) => {
-      remoteStream.addTrack(track);
-    });
-  };
   await webCamService.start();
 
   if (!webcamVideo.srcObject) webcamVideo.srcObject = webCamService.stream;
@@ -85,10 +69,34 @@ app.addEventListener(EAppEvents.OfferAccepted, async (event: any) => {
   connections.set(sendByClientId, pc);
 });
 
+app.addEventListener(EConnectionServiceEvents.PeerConnectionTrack, (event: any) => {
+  console.log('EConnectionServiceEvents.PeerConnectionTrack', event.detail);
+
+  const { onTrackEvent, clientId } = event.detail;
+
+  const remoteStream = new MediaStream();
+  const remoteStreamVideoBLock = document.createElement('video');
+
+  remoteStreamVideoBLock.setAttribute('data-clientid', clientId);
+  remoteStreamVideoBLock.setAttribute('autoplay', '');
+  remoteStreamVideoBLock.setAttribute('playsinline', '');
+  remoteStreamsBlock.append(remoteStreamVideoBLock);
+
+  remoteStreamVideoBLock.srcObject = remoteStream;
+
+  onTrackEvent.streams[0].getTracks().forEach((track) => {
+    remoteStream.addTrack(track);
+  });
+})
+
 
 app.addEventListener(EAppEvents.UserLeft, (event: any) => {
   const { clientId } = event.detail;
 
-  document.getElementById(clientId)?.remove();
+  document
+    .querySelectorAll(`[data-clientid="${clientId}"]`)
+    .forEach(elem => {
+      elem.remove();
+    });
   connections.delete(clientId);
 });
