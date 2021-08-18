@@ -1,20 +1,29 @@
-# EditorConfig is awesome: https://EditorConfig.org
+# EditorConfig helps developers define and maintain consistent
+# coding styles between different editors and IDEs
+# editorconfig.org
 
-# top-most EditorConfig file
 root = true
 
-# Unix-style newlines with a newline ending every file
+
 [*]
-end_of_line = crlf
+
+# Change these settings to your own preference
+indent_style = space
+indent_size = 2
+
+# We recommend you to keep these unchanged
+end_of_line = lf
+charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-# Tab indentation (no size specified)
-[Makefile]
-indent_style = tab
+[*.md]
+trim_trailing_whitespace = false
 
-# Indentation override for all JS under src directory
-[*.{ts, json, js}]
-charset = utf-8
-indent_style = space
+[*.json]
 indent_size = 2
+
+[*.{html,js,md}]
+block_comment_start = /**
+block_comment = *
+block_comment_end = */

@@ -1,5 +1,5 @@
 export class WebCamService extends EventTarget {
-  private _stream: MediaStream;
+  private _stream: MediaStream = new MediaStream();
   private _recording = false;
 
   get recording() {
@@ -11,8 +11,6 @@ export class WebCamService extends EventTarget {
   }
 
   async start(): Promise<MediaStream> {
-    if (this._stream) return this._stream;
-
     console.log('Getting user media (video) ...');
 
     try {

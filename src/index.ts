@@ -63,7 +63,7 @@ app.addEventListener(EAppEvents.OfferAccepted, async (event: any) => {
 
   await webCamService.start();
 
-  if (!webcamVideo.srcObject) webcamVideo.srcObject = webCamService.stream;
+  if (!webcamVideo.srcObject && webCamService.stream) webcamVideo.srcObject = webCamService.stream;
 
   connections.set(sendByClientId, pc);
 });
@@ -83,7 +83,7 @@ app.addEventListener(EConnectionServiceEvents.PeerConnectionTrack, (event: any) 
 
   remoteStreamVideoBLock.srcObject = remoteStream;
 
-  onTrackEvent.streams[0].getTracks().forEach((track) => {
+  onTrackEvent.streams[0].getTracks().forEach((track: MediaStreamTrack) => {
     remoteStream.addTrack(track);
   });
 })

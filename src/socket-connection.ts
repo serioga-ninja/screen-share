@@ -1,7 +1,4 @@
 import { io } from 'socket.io-client';
-import { ISocketMessage } from '../projects/shared/interfaces/all';
-import { connectionService } from './connection.service';
-
 export const socket = io('ws://192.168.2.11:8080');
 
 

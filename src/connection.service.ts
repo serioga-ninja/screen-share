@@ -22,7 +22,7 @@ const defaultPCConfiguration = {
 
 export class ConnectionService extends EventTarget {
   private readonly _peers: Record<string, RTCPeerConnection>;
-  private readonly _pendingCandidates: Record<string, any[]>;
+  private readonly _pendingCandidates: Record<string, RTCIceCandidateInit[]>;
 
   get peers() {
     return this._peers;
@@ -47,7 +47,7 @@ export class ConnectionService extends EventTarget {
     this._pendingCandidates[clientId] = [];
   }
 
-  addToPendingCandidates(clientId: string, candidate) {
+  addToPendingCandidates(clientId: string, candidate: RTCIceCandidateInit) {
     this._pendingCandidates[clientId].push(candidate);
   }
 
@@ -63,7 +63,7 @@ export class ConnectionService extends EventTarget {
     return pc;
   }
 
-  setRemoteDescription(clientId: string, payload): Promise<void> {
+  setRemoteDescription(clientId: string, payload: any): Promise<void> {
     return this._peers[clientId].setRemoteDescription(
       new RTCSessionDescription(payload)
     );
@@ -95,8 +95,8 @@ export class ConnectionService extends EventTarget {
     sendMessage({ type: sessionDescription.type, sdp: sessionDescription.sdp }, clientId);
   }
 
-  addIceCandidate(clientId: string, payload) {
-    return this.peers[clientId].addIceCandidate(new RTCIceCandidate(payload.candidate));
+  addIceCandidate(clientId: string, candidate: RTCIceCandidateInit) {
+    return this.peers[clientId].addIceCandidate(new RTCIceCandidate(candidate));
   }
 
   addPendingCandidates(clientId: string) {

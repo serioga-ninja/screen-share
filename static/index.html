@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WebRTC Demo</title>
+</head>
+<body>
+
+<div class="videos">
+  <div>
+    <h3>Local Stream</h3>
+    <video id="webcamVideo" autoplay playsinline></video>
+  </div>
+  <div style="display: flex; flex-direction: column">
+    <h3>Remote Streams</h3>
+
+    <div class="remote-streams-list" id="remote-streams-list">
+
+    </div>
+  </div>
+</div>
+
+<screen-share></screen-share>
+
+<script type="module" src="./build/index.js"></script>
+</body>
+</html>

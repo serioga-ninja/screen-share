@@ -91,7 +91,7 @@ export class App extends EventTarget {
         break;
       case 'candidate':
         if (this._connectionService.hasPeerWithClient(sendByClientId)) {
-          await this._connectionService.addIceCandidate(sendByClientId, payload);
+          await this._connectionService.addIceCandidate(sendByClientId, payload.candidate);
         } else {
           if (!this._connectionService.hasPendingCandidate(sendByClientId)) {
             this._connectionService.resetPendingCandidates(sendByClientId);
