@@ -1,23 +1,33 @@
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
-const fs = require('fs');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const TerserJSPlugin = require('terser-webpack-plugin');
+const CircularDependencyPlugin = require('circular-dependency-plugin');
 
-const clientRootFolder = path.dirname(__filename);
+const clientRootFolder = path.resolve(process.cwd(), 'src');
 
-module.exports = [
-  {
-    mode: 'development',
-    watch: true,
-    entry: './src/index.ts',
-    devtool: 'inline-source-map',
+module.exports = (args) => {
+  return {
+    watch: false,
+    mode: 'production',
+    devtool: 'hidden-source-map',
+    target: 'web',
     optimization: {
-      minimizer: [new OptimizeCSSAssetsPlugin({})],
+      minimizer: [new TerserJSPlugin({}), new OptimizeCSSAssetsPlugin({})],
+    },
+    entry: {
+      index: path.resolve(clientRootFolder, 'index.ts')
+    },
+    output: {
+      path: path.resolve(process.cwd(), 'static', 'build'),
+      filename: '[name].js',
     },
     resolve: {
-      extensions: ['.ts', '.tsx', '.js', '.json'],
+      extensions: ['.ts', '.js', '.json']
+    },
+    resolveLoader: {
+      // An array of directory names to be resolved to the current directory
+      modules: ['node_modules'],
     },
     module: {
       rules: [
@@ -29,7 +39,7 @@ module.exports = [
           },
         },
         {
-          test: /\.less$/,
+          test: /\.(css|less)$/,
           use: [
             MiniCssExtractPlugin.loader,
             {
@@ -47,7 +57,7 @@ module.exports = [
             {
               loader: 'less-loader',
               options: {
-                sourceMap: true,
+                sourceMap: true
               },
             },
           ],
@@ -56,24 +66,32 @@ module.exports = [
           test: /\.(ts|js)x?$/,
           exclude: /(node_modules|bower_components|libs)/,
           use: {
-            loader: 'babel-loader',
-            options: {
-              ...JSON.parse(
-                fs.readFileSync(path.resolve(clientRootFolder, '.babelrc'))
-              ),
-            },
+            loader: 'babel-loader'
           },
-        }
-      ]
-    },
-    output: {
-      path: __dirname + '/dist',
-      filename: 'app.js'
+        },
+        {
+          test: /.json$/,
+          loader: 'json-loader'
+        },
+      ],
     },
     plugins: [
-      new HtmlWebpackPlugin({
-        template: './src/index.html'
-      })
+      new CircularDependencyPlugin({
+        // exclude detection of files based on a RegExp
+        exclude: /a\.js|node_modules/,
+        // add errors to webpack instead of warnings
+        failOnError: false,
+        // allow import cycles that include an asyncronous import,
+        // e.g. via import(/* webpackMode: "weak" */ './file.js')
+        allowAsyncCycles: false,
+        // set the current working directory for displaying module paths
+        cwd: process.cwd(),
+      }),
+      new MiniCssExtractPlugin({
+        // Options similar to the same options in webpackOptions.output
+        // both options are optional
+        filename: '[name].css',
+      }),
     ]
-  }
-];
+  };
+};
