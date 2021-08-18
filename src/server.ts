@@ -3,12 +3,16 @@ import nodeStatic from 'node-static';
 import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io';
-import { IJoinedToRoom, ISocketMessage } from '../shared/interfaces/all';
+import { ISocketMessage } from './core/all';
 
-const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), '..', 'client', 'dist'));
+const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), 'dist'));
+
 const app = http.createServer(function (req, res) {
   fileServer.serve(req, res);
-}).listen(8080);
+}).listen(8080, () => {
+  console.log('HTTPS server ready on ' + 8080);
+});
+
 
 const io = new Server(app, {
   cors: {

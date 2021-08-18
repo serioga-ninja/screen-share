@@ -1,7 +1,6 @@
-'use strict';
-import { ISocketMessage } from '../../shared/interfaces/all';
 import { App, EAppEvents } from './app';
 import { connectionService, EConnectionServiceEvents } from './connection.service';
+import { ISocketMessage } from './core/all';
 import { socket } from './socket-connection';
 import { webCamService } from './web-cam.service';
 

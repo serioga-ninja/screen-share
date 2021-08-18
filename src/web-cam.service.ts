@@ -25,7 +25,7 @@ export class WebCamService extends EventTarget {
 
       return this._stream;
     } catch (e) {
-      alert('getUserMedia() error: ' + e.name);
+      console.error(e);
 
       return new MediaStream();
     }

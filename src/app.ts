@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io-client/build/socket';
-import { ISocketMessage } from '../../shared/interfaces/all';
 import { connectionService, ConnectionService, EConnectionServiceEvents } from './connection.service';
+import { ISocketMessage } from './core/all';
 import { socket } from './socket-connection';
 import { webCamService, WebCamService } from './web-cam.service';
 
