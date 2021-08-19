@@ -40,28 +40,13 @@ module.exports = (args) => {
           },
         },
         {
-          test: /\.(css|less)$/,
-          use: [
-            MiniCssExtractPlugin.loader,
-            {
-              loader: 'css-loader',
-              options: {
-                sourceMap: true,
-              },
+          test: /\.css|\.s(c|a)ss$/,
+          use: [{
+            loader: 'lit-scss-loader',
+            options: {
+              minify: true, // defaults to false
             },
-            {
-              loader: 'resolve-url-loader',
-              options: {
-                sourceMap: true,
-              },
-            },
-            {
-              loader: 'less-loader',
-              options: {
-                sourceMap: true
-              },
-            },
-          ],
+          }, 'extract-loader', 'css-loader', 'sass-loader'],
         },
         {
           test: /\.(ts|js)x?$/,

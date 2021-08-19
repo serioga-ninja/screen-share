@@ -9,6 +9,13 @@ export enum EAppEvents {
   UserLeft = 'userleft',
 }
 
+
+declare global {
+  interface WindowEventMap {
+    [EConnectionServiceEvents.PeerConnectionTrack]: CustomEvent<{ clientId: string; onTrackEvent: RTCTrackEvent; }>;
+  }
+}
+
 export class App extends EventTarget {
   constructor(private _socket: Socket,
               private _webCamService: WebCamService,

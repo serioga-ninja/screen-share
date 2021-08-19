@@ -10,6 +10,12 @@
         "allowDeclareFields": true
       }
     ],
+    [
+      "@babel/plugin-proposal-decorators",
+      {
+        "decoratorsBeforeExport": true
+      }
+    ],
     "@babel/plugin-transform-async-to-generator",
     "@babel/plugin-proposal-class-properties",
     "@babel/plugin-transform-runtime"

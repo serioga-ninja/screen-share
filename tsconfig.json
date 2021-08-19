@@ -91,7 +91,8 @@
     "outDir": "static"
   },
   "include": [
-    "./src/**/*.ts"
+    "./src/**/*.ts",
+    "node_modules/lit-scss-loader/types.d.ts"
   ],
   "exclude": [
     "node_modules",

@@ -1,0 +1,17 @@
+.user-card {
+  &__video {
+    width: 427px;
+    height: 320px;
+  }
+
+  &__controls button {
+
+    &.red {
+      color: red;
+    }
+
+    &.green {
+      color: green;
+    }
+  }
+}

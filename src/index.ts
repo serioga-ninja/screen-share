@@ -1,12 +1,7 @@
-import { App, EAppEvents } from './app';
-import { connectionService, EConnectionServiceEvents } from './connection.service';
 import { ISocketMessage } from './core/all';
 import { socket } from './socket-connection';
-import { webCamService } from './web-cam.service';
 
-const webcamVideo = document.getElementById('webcamVideo') as HTMLVideoElement;
-const remoteStreamsBlock = document.getElementById('remote-streams-list') as HTMLDivElement;
-const connections = new Map();
+import './components';
 
 let myId: string;
 
@@ -53,49 +48,3 @@ export function sendMessage(message: Record<string, unknown>, toClientId?: strin
 
   socket.emit('message', sendingMessage);
 }
-
-const app = new App(
-  socket, webCamService, connectionService
-);
-
-app.addEventListener(EAppEvents.OfferAccepted, async (event: any) => {
-  const { pc, sendByClientId } = event.detail;
-
-  await webCamService.start();
-
-  if (!webcamVideo.srcObject && webCamService.stream) webcamVideo.srcObject = webCamService.stream;
-
-  connections.set(sendByClientId, pc);
-});
-
-app.addEventListener(EConnectionServiceEvents.PeerConnectionTrack, (event: any) => {
-  console.log('EConnectionServiceEvents.PeerConnectionTrack', event.detail);
-
-  const { onTrackEvent, clientId } = event.detail;
-
-  const remoteStream = new MediaStream();
-  const remoteStreamVideoBLock = document.createElement('video');
-
-  remoteStreamVideoBLock.setAttribute('data-clientid', clientId);
-  remoteStreamVideoBLock.setAttribute('autoplay', '');
-  remoteStreamVideoBLock.setAttribute('playsinline', '');
-  remoteStreamsBlock.append(remoteStreamVideoBLock);
-
-  remoteStreamVideoBLock.srcObject = remoteStream;
-
-  onTrackEvent.streams[0].getTracks().forEach((track: MediaStreamTrack) => {
-    remoteStream.addTrack(track);
-  });
-})
-
-
-app.addEventListener(EAppEvents.UserLeft, (event: any) => {
-  const { clientId } = event.detail;
-
-  document
-    .querySelectorAll(`[data-clientid="${clientId}"]`)
-    .forEach(elem => {
-      elem.remove();
-    });
-  connections.delete(clientId);
-});
