@@ -5,7 +5,7 @@ import path from 'path';
 import { Server } from 'socket.io';
 import { ISocketMessage } from './core/all';
 
-const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), 'static'));
+const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), 'dist'));
 
 const app = http.createServer(function (req, res) {
   fileServer.serve(req, res);

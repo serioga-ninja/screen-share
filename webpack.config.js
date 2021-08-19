@@ -3,6 +3,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const TerserJSPlugin = require('terser-webpack-plugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const clientRootFolder = path.resolve(process.cwd(), 'src');
 
@@ -19,7 +20,7 @@ module.exports = (args) => {
       index: path.resolve(clientRootFolder, 'index.ts')
     },
     output: {
-      path: path.resolve(process.cwd(), 'static', 'build'),
+      path: path.resolve(process.cwd(), 'dist'),
       filename: '[name].js',
     },
     resolve: {
@@ -76,6 +77,10 @@ module.exports = (args) => {
       ],
     },
     plugins: [
+      new HtmlWebpackPlugin({
+        template: './src/index.html',
+        inject: 'body'
+      }),
       new CircularDependencyPlugin({
         // exclude detection of files based on a RegExp
         exclude: /a\.js|node_modules/,

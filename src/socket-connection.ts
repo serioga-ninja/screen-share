@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-export const socket = io('ws://192.168.2.11:8080');
+export const socket = io();
 
 
 // Leaving rooms and disconnecting from peers.
