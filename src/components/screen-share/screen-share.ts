@@ -7,9 +7,11 @@ import { socket } from '../../socket-connection';
 import { webCamService } from '../../web-cam.service';
 import { repeat } from 'lit/directives/repeat.js';
 
+import componentStyles from './screen-share.scss';
+
 @customElement('screen-share')
 export class ScreenShare extends LitElement {
-  static styles = css``;
+  static styles = [componentStyles];
 
   private readonly _app: App;
   private readonly _screenShareController: ScreenShareController;
@@ -34,12 +36,12 @@ export class ScreenShare extends LitElement {
     );
 
     return html`
-      <div class="videos">
+      <div class="screen-share">
         <user-card show-controls="true" .stream=${this._screenShareController.stream}></user-card>
         <div style="display: flex; flex-direction: column">
           <h3>Remote Streams</h3>
 
-          <div class="remote-streams-list" id="remote-streams-list">
+          <div class="screen-share__remote-streams">
             ${repeat(remoteStreamsArr, (item) => item.id, (item) =>
               html`
                 <user-card .stream=${item}></user-card>

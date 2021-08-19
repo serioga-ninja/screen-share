@@ -22,7 +22,7 @@ export class UserCardComponent extends LitElement {
   render() {
     return html`
       <div class="user-card">
-        <video class="user-card__video" autoplay playsinline></video>
+        <video class="user-card__video" autoplay playsinline ?muted="${this.showControls}"></video>
         <div class="user-card__controls" ?hidden="${!this.showControls || !this.stream}">
           <button type="button"
                   class=${classMap({

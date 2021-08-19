@@ -11,7 +11,7 @@ export class WebCamService extends EventTarget {
   }
 
   async start(): Promise<MediaStream> {
-    if (this._recording) return this._stream;
+    if (this._recording && this._stream) return this._stream;
 
     console.log('Getting user media (video) ...');
 
@@ -21,7 +21,7 @@ export class WebCamService extends EventTarget {
         video: true
       });
 
-      this._stream.getVideoTracks().forEach(track => track.enabled = false);
+      // this._stream.getVideoTracks().forEach(track => track.enabled = false);
       this._stream.getAudioTracks().forEach(track => track.enabled = false);
 
       console.log('getUserMedia video stream URL:', this._stream);
