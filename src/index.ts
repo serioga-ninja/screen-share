@@ -1,4 +1,5 @@
 import { ISocketMessage } from './core/all';
+import { mediaStreamService } from './media-stream.service';
 import { socket } from './socket-connection';
 
 import './components';
@@ -18,9 +19,6 @@ socket.on('hello', function (mySocketId: string) {
 
   myId = mySocketId;
 });
-
-// Joining a room.
-socket.emit('create or join', room);
 
 if (location.hostname.match(/localhost|127\.0\.0/)) {
   socket.emit('ipaddr');
@@ -48,3 +46,10 @@ export function sendMessage(message: Record<string, unknown>, toClientId?: strin
 
   socket.emit('message', sendingMessage);
 }
+
+(async () => {
+  await mediaStreamService.addWebCamStream();
+
+  // Joining a room.
+  socket.emit('create or join', room);
+})();

@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io-client';
 import { sendMessage } from './index';
 import { socket } from './socket-connection';
-import { WebCamService, webCamService } from './web-cam.service';
+import { MediaStreamService, mediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 
 export enum EConnectionServiceEvents {
   PeerConnectionTrack = 'peerconnectiontrack',
@@ -28,7 +28,7 @@ export class ConnectionService extends EventTarget {
     return this._peers;
   }
 
-  constructor(private _socket: Socket, private _webCamService: WebCamService) {
+  constructor(private _socket: Socket, private _webCamService: MediaStreamService) {
     super();
 
     this._pendingCandidates = {};
@@ -59,20 +59,44 @@ export class ConnectionService extends EventTarget {
     // send any ice candidates to the other peer
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
     pc.ontrack = options.ontrack;
+    pc.onnegotiationneeded = () => this.handleNegotiationNeededEvent(clientId);
+    pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
 
-    return pc;
+    // Push tracks from local stream to peer connection
+    this._webCamService.stream?.getTracks().forEach((track) => {
+      pc.addTrack(track, this._webCamService.stream);
+    });
+
+    this._webCamService.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, ((event: CustomEvent<{ tracks: MediaStreamTrack[] }>) => {
+      event.detail.tracks.forEach(track => {
+        pc.addTrack(track, this._webCamService.stream);
+      });
+    }) as EventListener);
+
+    return this._peers[clientId] = pc;
+  }
+
+  protected handleICEGatheringStateChangeEvent(pc: RTCPeerConnection) {
+    console.log('*** ICE gathering state changed to: ' + pc.iceGatheringState);
+  }
+
+  // Called by the WebRTC layer to let us know when it's time to
+  // begin, resume, or restart ICE negotiation.
+  async handleNegotiationNeededEvent(clientId: string) {
+    console.log('*** Negotiation needed');
+
+    try {
+      console.log('---> Creating offer');
+      await this.sendOffer(clientId);
+    } catch (err) {
+      console.log('*** The following error occurred while handling the negotiationneeded event:');
+    }
   }
 
   setRemoteDescription(clientId: string, payload: any): Promise<void> {
     return this._peers[clientId].setRemoteDescription(
       new RTCSessionDescription(payload)
     );
-  }
-
-  async createPeerConnectionForSID(clientId: string, options: IOnPeerConnectionOptions): Promise<RTCPeerConnection> {
-    this._peers[clientId] = this.createPeerConnection(clientId, options);
-
-    return this._peers[clientId];
   }
 
   async sendOffer(clientId: string) {
@@ -99,17 +123,17 @@ export class ConnectionService extends EventTarget {
     return this.peers[clientId].addIceCandidate(new RTCIceCandidate(candidate));
   }
 
-  addPendingCandidates(clientId: string) {
+  async addPendingCandidates(clientId: string) {
     if (clientId in this._pendingCandidates) {
-      this._pendingCandidates[clientId].forEach(candidate => {
-        this._peers[clientId].addIceCandidate(new RTCIceCandidate(candidate))
-      });
+      for await (const candidate of this._pendingCandidates[clientId]) {
+        await this._peers[clientId].addIceCandidate(new RTCIceCandidate(candidate))
+      }
     }
   }
 
   private onICECandidate(event: RTCPeerConnectionIceEvent, clientId: string) {
     if (event.candidate) {
-      console.log(`Sending candidate to ${clientId}`, event.candidate);
+      console.log(`Sending candidate to ${clientId}`);
 
       sendMessage({
         type: 'candidate',
@@ -123,4 +147,4 @@ export class ConnectionService extends EventTarget {
   }
 }
 
-export const connectionService = new ConnectionService(socket, webCamService);
+export const connectionService = new ConnectionService(socket, mediaStreamService);

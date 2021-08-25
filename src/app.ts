@@ -2,23 +2,16 @@ import { Socket } from 'socket.io-client/build/socket';
 import { connectionService, ConnectionService, EConnectionServiceEvents } from './connection.service';
 import { ISocketMessage } from './core/all';
 import { socket } from './socket-connection';
-import { webCamService, WebCamService } from './web-cam.service';
+import { mediaStreamService, MediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 
 export enum EAppEvents {
   OfferAccepted = 'offeraccepted',
   UserLeft = 'userleft',
 }
 
-
-declare global {
-  interface WindowEventMap {
-    [EConnectionServiceEvents.PeerConnectionTrack]: CustomEvent<{ clientId: string; onTrackEvent: RTCTrackEvent; }>;
-  }
-}
-
 export class App extends EventTarget {
   constructor(private _socket: Socket,
-              private _webCamService: WebCamService,
+              private _webCamService: MediaStreamService,
               private _connectionService: ConnectionService) {
     super();
 
@@ -29,14 +22,12 @@ export class App extends EventTarget {
     _socket.on('joined', async (clientId: string) => {
       console.log(`User ${clientId} joined`);
 
-      const pc = await _connectionService.createPeerConnectionForSID(
+      const pc = await _connectionService.createPeerConnection(
         clientId,
         {
           ontrack: (event: RTCTrackEvent) => this.onPeerConnectionTrack(clientId, event)
         }
       );
-
-      await this.addTracksToPeerConnection(pc);
 
       await connectionService.sendOffer(clientId);
 
@@ -67,7 +58,9 @@ export class App extends EventTarget {
 
     switch (payload.type) {
       case 'offer':
-        const pc = await this._connectionService.createPeerConnectionForSID(
+        await this._webCamService.addWebCamStream();
+
+        const pc = await this._connectionService.createPeerConnection(
           sendByClientId,
           {
             ontrack: (event: RTCTrackEvent) => this.onPeerConnectionTrack(sendByClientId, event)
@@ -75,13 +68,12 @@ export class App extends EventTarget {
         );
 
         await this._connectionService.setRemoteDescription(sendByClientId, payload);
-        await this.addTracksToPeerConnection(pc);
 
         const sdp = await this._connectionService.sendAnswer(sendByClientId);
 
         await this._connectionService.setAndSendLocalDescription(sendByClientId, sdp);
 
-        this._connectionService.addPendingCandidates(sendByClientId);
+        await this._connectionService.addPendingCandidates(sendByClientId);
 
         this.dispatchEvent(new CustomEvent(EAppEvents.OfferAccepted, {
           detail: {
@@ -107,15 +99,6 @@ export class App extends EventTarget {
         }
         break;
     }
-  }
-
-  async addTracksToPeerConnection(pc: RTCPeerConnection) {
-    await this._webCamService.start();
-
-    // Push tracks from local stream to peer connection
-    this._webCamService.stream?.getTracks().forEach((track) => {
-      pc.addTrack(track, this._webCamService.stream);
-    });
   }
 
   private onPeerConnectionTrack(clientId: string, event: RTCTrackEvent) {

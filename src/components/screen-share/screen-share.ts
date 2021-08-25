@@ -4,7 +4,7 @@ import { App, EAppEvents } from '../../app';
 import { connectionService, EConnectionServiceEvents } from '../../connection.service';
 import { ScreenShareController } from '../../reactive-controllers/screen-share.controller';
 import { socket } from '../../socket-connection';
-import { webCamService } from '../../web-cam.service';
+import { mediaStreamService } from '../../media-stream.service';
 import { repeat } from 'lit/directives/repeat.js';
 
 import componentStyles from './screen-share.scss';
@@ -20,7 +20,7 @@ export class ScreenShare extends LitElement {
     super();
 
     this._app = new App(
-      socket, webCamService, connectionService
+      socket, mediaStreamService, connectionService
     );
     this._screenShareController = new ScreenShareController(this, this._app);
   }
@@ -42,8 +42,7 @@ export class ScreenShare extends LitElement {
           <h3>Remote Streams</h3>
 
           <div class="screen-share__remote-streams">
-            ${repeat(remoteStreamsArr, (item) => item.id, (item) =>
-              html`
+            ${repeat(remoteStreamsArr, (item) => item.id, (item) => html`
                 <user-card .stream=${item}></user-card>
               `
             )}

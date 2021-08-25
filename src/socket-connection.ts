@@ -10,7 +10,3 @@ socket.on('disconnect', function (reason) {
 socket.on('ipaddr', function (ipaddr) {
   console.log('Server IP address is: ' + ipaddr);
 });
-
-socket.on('created', async function (clientId: string) {
-  console.log('Created room - my client ID is ', clientId);
-});

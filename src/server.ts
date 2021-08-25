@@ -39,29 +39,24 @@ io.sockets.on('connection', function (socket) {
   });
 
   socket.on('create or join', function (room) {
-    log('Received request to create or join room ' + room);
+    console.log('Received request to create or join room ' + room);
 
     const clientsInRoom = io.sockets.adapter.rooms.get(room);
     const numClients = clientsInRoom?.size || 0;
 
-    log('Room ' + room + ' now has ' + numClients + ' client(s)');
+    console.log('Client ID ' + socket.id + ' joined room ' + room);
 
-    if (numClients === 0) {
-      socket.join(room);
-      log('Client ID ' + socket.id + ' created room ' + room);
-      socket.emit('created', socket.id);
-    } else {
-      log('Client ID ' + socket.id + ' joined room ' + room);
+    socket.join(room);
 
-      socket.join(room);
+    console.log('Room ' + room + ' now has ' + numClients + ' client(s)');
 
-      io.sockets
-        .in(room)
-        .except(socket.id)
-        .emit('joined', socket.id);
+    io.sockets
+      .in(room)
+      .except(socket.id)
+      .emit('joined', socket.id);
 
-      socket.emit('joined to room');
-    }
+    socket.emit('joined to room');
+
 
     socket.emit('hello', socket.id);
   });
