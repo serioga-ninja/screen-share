@@ -1,5 +1,5 @@
 import 'webrtc-adapter';
-import { ISocketMessage } from './core/all';
+import { ISocketMessage } from '../Shared/core/all';
 import { mediaStreamService } from './media-stream.service';
 import { socket } from './socket-connection';
 

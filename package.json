@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start:client": "./node_modules/.bin/webpack --mode=development --config ./webpack.config.dev.js",
-    "build": "rimraf dist && tsc && rollup -c rollup.config.js && npm run analyze",
-    "start:build": "web-dev-server --root-dir dist --app-index index.html --open",
-    "analyze": "cem analyze --litelement",
-    "start": "tsc --watch --preserveWatchOutput"
+    "build:server": "tsc --project ./Server/tsconfig.json",
+    "build:client": "./node_modules/.bin/webpack --mode=production --config ./Client/webpack.config.js",
+    "build": "npm run build:client && npm run build:server",
+    "start:client": "./node_modules/.bin/webpack --mode=development --config ./Client/webpack.config.dev.js",
+    "start": "node ./dist/Server/server.js"
   },
   "author": "",
   "license": "ISC",

@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io-client/build/socket';
 import { connectionService, ConnectionService, EConnectionServiceEvents } from './connection.service';
-import { ISocketMessage } from './core/all';
+import { ISocketMessage } from '../Shared/core/all';
 import { socket } from './socket-connection';
 import { mediaStreamService, MediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 

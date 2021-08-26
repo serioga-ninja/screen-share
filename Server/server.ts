@@ -3,9 +3,9 @@ import nodeStatic from 'node-static';
 import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io';
-import { ISocketMessage } from './core/all';
+import { ISocketMessage } from '../Shared/core/all';
 
-const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), 'dist'));
+const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), 'dist', 'public'));
 
 const app = http.createServer(function (req, res) {
   fileServer.serve(req, res);

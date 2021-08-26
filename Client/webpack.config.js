@@ -5,7 +5,7 @@ const TerserJSPlugin = require('terser-webpack-plugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-const clientRootFolder = path.resolve(process.cwd(), 'src');
+const clientRootFolder = path.resolve(process.cwd(), 'Client', 'src');
 
 module.exports = (args) => {
   return {
@@ -20,7 +20,7 @@ module.exports = (args) => {
       index: path.resolve(clientRootFolder, 'index.ts')
     },
     output: {
-      path: path.resolve(process.cwd(), 'dist'),
+      path: path.resolve(process.cwd(), 'dist', 'public'),
       filename: '[name].js',
     },
     resolve: {
@@ -63,7 +63,7 @@ module.exports = (args) => {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: './src/index.html',
+        template: path.resolve(clientRootFolder, 'index.html'),
         inject: 'body'
       }),
       new CircularDependencyPlugin({
