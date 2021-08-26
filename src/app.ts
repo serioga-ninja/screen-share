@@ -58,7 +58,7 @@ export class App extends EventTarget {
 
     switch (payload.type) {
       case 'offer':
-        await this._webCamService.addWebCamStream();
+        await this._webCamService.useWebCamVideo();
 
         const pc = await this._connectionService.createPeerConnection(
           sendByClientId,
@@ -102,6 +102,8 @@ export class App extends EventTarget {
   }
 
   private onPeerConnectionTrack(clientId: string, event: RTCTrackEvent) {
+    console.log(`*** Peer connection ${clientId} received new track`);
+
     this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.PeerConnectionTrack, {
       detail: {
         clientId,

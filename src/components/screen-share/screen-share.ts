@@ -25,10 +25,6 @@ export class ScreenShare extends LitElement {
     this._screenShareController = new ScreenShareController(this, this._app);
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-  }
-
   render() {
     const remoteStreamsArr = Array.from(
       this._screenShareController.remoteStreams,
@@ -37,6 +33,7 @@ export class ScreenShare extends LitElement {
 
     return html`
       <div class="screen-share">
+        <button @click=${() => this.shareScreen()}>Toggle Screen Share</button>
         <user-card show-controls="true" .stream=${this._screenShareController.stream}></user-card>
         <div style="display: flex; flex-direction: column">
           <h3>Remote Streams</h3>
@@ -50,5 +47,9 @@ export class ScreenShare extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  private shareScreen() {
+    mediaStreamService.toggleVideo();
   }
 }

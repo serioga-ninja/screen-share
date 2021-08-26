@@ -1,3 +1,4 @@
+import 'webrtc-adapter';
 import { ISocketMessage } from './core/all';
 import { mediaStreamService } from './media-stream.service';
 import { socket } from './socket-connection';
@@ -48,7 +49,7 @@ export function sendMessage(message: Record<string, unknown>, toClientId?: strin
 }
 
 (async () => {
-  await mediaStreamService.addWebCamStream();
+  await mediaStreamService.useWebCamVideo();
 
   // Joining a room.
   socket.emit('create or join', room);

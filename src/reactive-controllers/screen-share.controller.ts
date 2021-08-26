@@ -15,8 +15,6 @@ export class ScreenShareController implements ReactiveController {
 
   hostConnected() {
     this.app.addEventListener(EConnectionServiceEvents.PeerConnectionTrack, ((event: CustomEvent<{ clientId: string; onTrackEvent: RTCTrackEvent; }>) => {
-      console.log('EConnectionServiceEvents.PeerConnectionTrack', event.detail);
-
       const { onTrackEvent, clientId } = event.detail;
 
       let stream = this.remoteStreams.get(clientId);

@@ -23,6 +23,7 @@ const defaultPCConfiguration = {
 export class ConnectionService extends EventTarget {
   private readonly _peers: Record<string, RTCPeerConnection>;
   private readonly _pendingCandidates: Record<string, RTCIceCandidateInit[]>;
+  private _trackSenders: WeakMap<MediaStreamTrack, RTCRtpSender> = new WeakMap;
 
   get peers() {
     return this._peers;
@@ -52,6 +53,8 @@ export class ConnectionService extends EventTarget {
   }
 
   createPeerConnection(clientId: string, options: IOnPeerConnectionOptions): RTCPeerConnection {
+    if (this._peers[clientId]) return this._peers[clientId];
+
     console.log(`Creating Peer connection for ${clientId}`);
 
     const pc = new RTCPeerConnection(defaultPCConfiguration);
@@ -59,38 +62,12 @@ export class ConnectionService extends EventTarget {
     // send any ice candidates to the other peer
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
     pc.ontrack = options.ontrack;
-    pc.onnegotiationneeded = () => this.handleNegotiationNeededEvent(clientId);
+    // pc.onnegotiationneeded = () => this.handleNegotiationNeededEvent(clientId);
     pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
 
-    // Push tracks from local stream to peer connection
-    this._webCamService.stream?.getTracks().forEach((track) => {
-      pc.addTrack(track, this._webCamService.stream);
-    });
-
-    this._webCamService.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, ((event: CustomEvent<{ tracks: MediaStreamTrack[] }>) => {
-      event.detail.tracks.forEach(track => {
-        pc.addTrack(track, this._webCamService.stream);
-      });
-    }) as EventListener);
+    this.connectToStream(this._webCamService.stream, pc);
 
     return this._peers[clientId] = pc;
-  }
-
-  protected handleICEGatheringStateChangeEvent(pc: RTCPeerConnection) {
-    console.log('*** ICE gathering state changed to: ' + pc.iceGatheringState);
-  }
-
-  // Called by the WebRTC layer to let us know when it's time to
-  // begin, resume, or restart ICE negotiation.
-  async handleNegotiationNeededEvent(clientId: string) {
-    console.log('*** Negotiation needed');
-
-    try {
-      console.log('---> Creating offer');
-      await this.sendOffer(clientId);
-    } catch (err) {
-      console.log('*** The following error occurred while handling the negotiationneeded event:');
-    }
   }
 
   setRemoteDescription(clientId: string, payload: any): Promise<void> {
@@ -143,6 +120,53 @@ export class ConnectionService extends EventTarget {
       }, clientId);
     } else {
       console.log('End of candidates.');
+    }
+  }
+
+  private connectToStream(stream: MediaStream, pc: RTCPeerConnection): void {
+    // Push tracks from local stream to peer connection
+    for (const track of stream.getTracks()) {
+      const sender = pc.addTrack(track, stream);
+      this._trackSenders.set(track, sender);
+    }
+
+    stream.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, ((event: CustomEvent<{ tracks: MediaStreamTrack[]; }>) => {
+      const { tracks } = event.detail;
+
+      for (const track of tracks) {
+        const sender = pc.addTrack(track, stream);
+        this._trackSenders.set(track, sender);
+      }
+    }) as EventListener);
+
+    stream.addEventListener(MediaStreamServiceEvents.ReplaceTrackJSEvent, ((event: CustomEvent<{ from: MediaStreamTrack; to: MediaStreamTrack; }>) => {
+      const { from, to } = event.detail;
+
+      const fromSender = this._trackSenders.get(from);
+      if (fromSender) {
+        fromSender.replaceTrack(to);
+      } else {
+        const toSender = pc.addTrack(to, stream);
+        this._trackSenders.set(to, toSender);
+      }
+
+    }) as EventListener);
+  }
+
+  private handleICEGatheringStateChangeEvent(pc: RTCPeerConnection) {
+    console.log('*** ICE gathering state changed to: ' + pc.iceGatheringState);
+  }
+
+  // Called by the WebRTC layer to let us know when it's time to
+  // begin, resume, or restart ICE negotiation.
+  private async handleNegotiationNeededEvent(clientId: string) {
+    console.log('*** Negotiation needed');
+
+    try {
+      console.log('---> Creating offer');
+      await this.sendOffer(clientId);
+    } catch (err) {
+      console.log('*** The following error occurred while handling the negotiationneeded event:');
     }
   }
 }
