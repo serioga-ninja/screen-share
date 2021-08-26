@@ -4,13 +4,15 @@ import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io';
 import { ISocketMessage } from '../Shared/core/all';
+import 'dotenv';
 
 const fileServer = new nodeStatic.Server(path.resolve(process.cwd(), 'dist', 'public'));
+const port = process.env.PORT || 8080;
 
 const app = http.createServer(function (req, res) {
   fileServer.serve(req, res);
-}).listen(8080, () => {
-  console.log('HTTPS server ready on ' + 8080);
+}).listen(port, () => {
+  console.log('HTTPS server ready on ' + port);
 });
 
 
