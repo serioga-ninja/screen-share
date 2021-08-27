@@ -7,7 +7,7 @@ module.exports = (args) => {
     ...config,
     watch: true,
     mode: 'development',
-    devtool: 'source-map',
+    devtool: 'inline-source-map',
     optimization: {}
   };
 };

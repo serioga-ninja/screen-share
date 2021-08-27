@@ -27,6 +27,10 @@ export class UserCardComponent extends LitElement {
     super.connectedCallback();
 
     this._webStreamController = new WebStreamController(this, this.stream);
+
+    setTimeout(() => {
+      this.shadowRoot.querySelector('video').srcObject = this.stream as MediaStream;
+    }, 100);
   }
 
   render() {
@@ -55,14 +59,5 @@ export class UserCardComponent extends LitElement {
     track.enabled = !track.enabled;
 
     this.requestUpdate();
-  }
-
-  protected updated(_changedProperties: PropertyValues) {
-    super.updated(_changedProperties);
-
-    if (_changedProperties.has('stream') && this.videoElement?.length > 0) {
-      this.videoElement[0].srcObject = this.stream as MediaStream;
-      this.requestUpdate();
-    }
   }
 }

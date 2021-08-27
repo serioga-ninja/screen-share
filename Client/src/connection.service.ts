@@ -1,6 +1,5 @@
 import { Socket } from 'socket.io-client';
-import { sendMessage } from './index';
-import { socket } from './socket-connection';
+import { sendMessage, socket } from './socket-connection';
 import { MediaStreamService, mediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 
 export enum EConnectionServiceEvents {
@@ -135,6 +134,7 @@ export class ConnectionService extends EventTarget {
 
       for (const track of tracks) {
         const sender = pc.addTrack(track, stream);
+
         this._trackSenders.set(track, sender);
       }
     }) as EventListener);
@@ -145,11 +145,8 @@ export class ConnectionService extends EventTarget {
       const fromSender = this._trackSenders.get(from);
       if (fromSender) {
         fromSender.replaceTrack(to);
-      } else {
-        const toSender = pc.addTrack(to, stream);
-        this._trackSenders.set(to, toSender);
+        this._trackSenders.set(to, fromSender);
       }
-
     }) as EventListener);
   }
 

@@ -1,8 +1,7 @@
 import { Socket } from 'socket.io-client/build/socket';
+import { ISocketMessage } from '../../Shared/core/all';
 import { connectionService, ConnectionService, EConnectionServiceEvents } from './connection.service';
-import { ISocketMessage } from '../Shared/core/all';
-import { socket } from './socket-connection';
-import { mediaStreamService, MediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
+import { MediaStreamService } from './media-stream.service';
 
 export enum EAppEvents {
   OfferAccepted = 'offeraccepted',
