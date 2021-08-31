@@ -1,7 +1,7 @@
 import 'webrtc-adapter';
 
 import './components';
-import { mediaStreamService } from './media-stream.service';
+import { mediaStreamService } from './services';
 import { initializeSockets } from './socket-connection';
 
 // Create a random room if not already present in the URL.

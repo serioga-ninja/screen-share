@@ -1,10 +1,10 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { App, EAppEvents } from '../../app';
-import { connectionService, EConnectionServiceEvents } from '../../connection.service';
+import { connectionService, EConnectionServiceEvents } from '../../services/connection.service';
 import { ScreenShareController } from '../../reactive-controllers/screen-share.controller';
 import { socket } from '../../socket-connection';
-import { mediaStreamService } from '../../media-stream.service';
+import { mediaStreamService } from '../../services/media-stream.service';
 import { repeat } from 'lit/directives/repeat.js';
 
 import componentStyles from './screen-share.scss';

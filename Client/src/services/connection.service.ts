@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io-client';
-import { sendMessage, socket } from './socket-connection';
+import { sendMessage, socket } from '../socket-connection';
 import { MediaStreamService, mediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 
 export enum EConnectionServiceEvents {

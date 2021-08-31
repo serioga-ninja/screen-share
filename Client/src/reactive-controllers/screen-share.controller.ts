@@ -1,7 +1,7 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { App, EAppEvents } from '../app';
-import { EConnectionServiceEvents } from '../connection.service';
-import { mediaStreamService } from '../media-stream.service';
+import { EConnectionServiceEvents } from '../services/connection.service';
+import { mediaStreamService } from '../services/media-stream.service';
 
 export class ScreenShareController implements ReactiveController {
   stream?: MediaStream;

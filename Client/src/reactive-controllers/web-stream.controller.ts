@@ -1,5 +1,5 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import { MediaStreamService, MediaStreamServiceEvents } from '../media-stream.service';
+import { MediaStreamService, MediaStreamServiceEvents } from '../services/media-stream.service';
 
 export class WebStreamController implements ReactiveController {
 
