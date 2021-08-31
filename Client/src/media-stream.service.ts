@@ -37,8 +37,28 @@ export class MediaStreamService extends EventTarget {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
+        video: {
+          width: {
+            min: 320,
+            max: 1280
+          },
+          height: {
+            min: 240,
+            max: 720
+          },
+          frameRate: {
+            ideal: 60,
+            min: 10
+          }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: { max: 48000, min: 48000 },
+          sampleSize: { max: 16, min: 16 },
+          latency: { max: 0.01, min: 0.01 },
+          channelCount: { max: 2, min: 1 }
+        }
       });
 
       this._webCamTrack = stream.getVideoTracks()[0];
