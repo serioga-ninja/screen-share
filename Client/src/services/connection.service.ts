@@ -1,10 +1,12 @@
 import { ESocketEvents, ISocketMessage } from '../../../Shared';
 import socketConnectionService, { SocketConnectionService } from '../socket-connection';
+import { User } from '../user';
 import { MediaStreamService, mediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 
 export enum EConnectionServiceEvents {
   PeerConnectionTrack = 'peerconnectiontrack',
   OfferAccepted = 'offeraccepted',
+  PeerConnectionCreated = 'onpeeroconnectioncreated',
 }
 
 const defaultPCConfiguration = {
@@ -20,6 +22,7 @@ export class ConnectionService extends EventTarget {
   private readonly _peers: Record<string, RTCPeerConnection>;
   private readonly _pendingCandidates: Record<string, RTCIceCandidateInit[]>;
   private _trackSenders: WeakMap<MediaStreamTrack, RTCRtpSender> = new WeakMap;
+  private _currentUser: User;
 
   get peers() {
     return this._peers;
@@ -33,7 +36,9 @@ export class ConnectionService extends EventTarget {
     this._peers = {};
   }
 
-  init() {
+  init(user: User) {
+    this._currentUser = user;
+
     this._socketConnectionService.on(ESocketEvents.Message, async (message: ISocketMessage) => {
       await this.handleSignalingData(message);
     });
@@ -80,10 +85,16 @@ export class ConnectionService extends EventTarget {
     // send any ice candidates to the other peer
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
     pc.ontrack = (e) => this.onPeerConnectionTrack(e, clientId);
-    // pc.onnegotiationneeded = () => this.handleNegotiationNeededEvent(clientId);
     pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
 
-    this.connectToStream(this._mediaStreamService.stream, pc);
+    this.connectToStream(pc);
+
+    this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.PeerConnectionCreated, {
+      detail: {
+        pc: pc,
+        clientId
+      }
+    }));
 
     return this._peers[clientId] = pc;
   }
@@ -184,22 +195,13 @@ export class ConnectionService extends EventTarget {
     }
   }
 
-  private connectToStream(stream: MediaStream, pc: RTCPeerConnection): void {
+  private connectToStream(pc: RTCPeerConnection): void {
+    const stream = this._currentUser.stream;
     // Push tracks from local stream to peer connection
     for (const track of stream.getTracks()) {
       const sender = pc.addTrack(track, stream);
       this._trackSenders.set(track, sender);
     }
-
-    stream.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, ((event: CustomEvent<{ tracks: MediaStreamTrack[]; }>) => {
-      const { tracks } = event.detail;
-
-      for (const track of tracks) {
-        const sender = pc.addTrack(track, stream);
-
-        this._trackSenders.set(track, sender);
-      }
-    }) as EventListener);
 
     stream.addEventListener(MediaStreamServiceEvents.ReplaceTrackJSEvent, ((event: CustomEvent<{ from: MediaStreamTrack; to: MediaStreamTrack; }>) => {
       const { from, to } = event.detail;
@@ -207,26 +209,16 @@ export class ConnectionService extends EventTarget {
       const fromSender = this._trackSenders.get(from);
       if (fromSender) {
         fromSender.replaceTrack(to);
+
         this._trackSenders.set(to, fromSender);
+      } else {
+        console.error(`Track ${from} not found`)
       }
     }) as EventListener);
   }
 
   private handleICEGatheringStateChangeEvent(pc: RTCPeerConnection) {
     console.log('*** ICE gathering state changed to: ' + pc.iceGatheringState);
-  }
-
-  // Called by the WebRTC layer to let us know when it's time to
-  // begin, resume, or restart ICE negotiation.
-  private async handleNegotiationNeededEvent(clientId: string) {
-    console.log('*** Negotiation needed');
-
-    try {
-      console.log('---> Creating offer');
-      await this.sendOffer(clientId);
-    } catch (err) {
-      console.log('*** The following error occurred while handling the negotiationneeded event:');
-    }
   }
 
   private onPeerConnectionTrack(event: RTCTrackEvent, clientId: string) {

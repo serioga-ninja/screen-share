@@ -1,6 +1,14 @@
 .screen-share {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
   &__remote-streams {
     display: flex;
     flex-direction: row;
+  }
+
+  &__main-screen {
+    flex-grow: 1;
   }
 }

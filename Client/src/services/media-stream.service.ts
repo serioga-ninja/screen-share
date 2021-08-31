@@ -1,6 +1,6 @@
+import { Subject } from 'rxjs';
+
 export enum MediaStreamServiceEvents {
-  AddTrackJSEvent = 'addtrackjs',
-  RemoveTrackJSEvent = 'removetrackjs',
   ReplaceTrackJSEvent = 'replacerackjs',
 }
 
@@ -10,6 +10,8 @@ export enum EVideoType {
 }
 
 export class MediaStreamService extends EventTarget {
+  readonly stream$: Subject<MediaStream> = new Subject<MediaStream>();
+
   private _stream: MediaStream = new MediaStream();
 
   private _webCamTrack?: MediaStreamTrack;
@@ -22,11 +24,17 @@ export class MediaStreamService extends EventTarget {
     return this._stream;
   }
 
-  toggleVideo() {
+  constructor() {
+    super();
+
+    this.stream$.next(this._stream);
+  }
+
+  async toggleVideo() {
     if (this._selectedVideoType === EVideoType.WebCam) {
-      this.useScreenVideo();
+      await this.useScreenVideo();
     } else {
-      this.useWebCamVideo();
+      await this.useWebCamVideo();
     }
   }
 
@@ -66,6 +74,8 @@ export class MediaStreamService extends EventTarget {
 
       this._webCamTrack.enabled = false;
       this._audioTrack.enabled = false;
+
+      this._stream.addTrack(this._audioTrack);
     } catch (e) {
       console.error(e);
     }
@@ -94,11 +104,7 @@ export class MediaStreamService extends EventTarget {
       return;
     }
 
-    if (this._webCamTrack && this.streamContainsTrack(this._webCamTrack)) {
-      this.replaceTrack(this._webCamTrack, this._screenTrack);
-    } else {
-      this.addTrack(this._screenTrack);
-    }
+    this.replaceTrack(this._webCamTrack, this._screenTrack);
 
     this._selectedVideoType = EVideoType.Screen;
   }
@@ -114,14 +120,8 @@ export class MediaStreamService extends EventTarget {
       return;
     }
 
-    if (this._screenTrack && this.streamContainsTrack(this._screenTrack)) {
-      this.replaceTrack(this._screenTrack, this._webCamTrack);
-      this._screenTrack.stop();
-    } else {
-      if (this._audioTrack && this._stream.getAudioTracks().length === 0) this.addTrack(this._audioTrack);
-
-      this.addTrack(this._webCamTrack);
-    }
+    this.replaceTrack(this._screenTrack, this._webCamTrack);
+    this._screenTrack?.stop();
 
     this._selectedVideoType = EVideoType.WebCam;
   }
@@ -131,21 +131,14 @@ export class MediaStreamService extends EventTarget {
   }
 
   private replaceTrack(from: MediaStreamTrack, track: MediaStreamTrack): void {
-    this._stream.removeTrack(from);
+    if (from) {
+      this._stream.removeTrack(from);
+    }
     this._stream.addTrack(track);
     this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.ReplaceTrackJSEvent, {
       detail: {
         from: from,
         to: track
-      }
-    }));
-  }
-
-  private addTrack(track: MediaStreamTrack): void {
-    this._stream.addTrack(track);
-    this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.AddTrackJSEvent, {
-      detail: {
-        tracks: [track]
       }
     }));
   }

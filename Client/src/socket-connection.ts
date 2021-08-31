@@ -1,9 +1,6 @@
 import { io } from 'socket.io-client';
 import { Socket } from 'socket.io-client/build/socket';
-import { log } from 'util';
 import { ESocketEvents } from '../../Shared';
-import { mediaStreamService } from './services/media-stream.service';
-import { User } from './user';
 
 
 export class SocketConnectionService {
@@ -15,41 +12,40 @@ export class SocketConnectionService {
     this._socket = io();
   }
 
-  init(roomId: string) {
-    this._roomId = roomId;
+  init(roomId: string): Promise<string> {
+    return new Promise<string>(resolve => {
+      this._roomId = roomId;
 
-    // Leaving rooms and disconnecting from peers.
-    this._socket.on(ESocketEvents.Disconnect, function (reason) {
-      console.log(`Disconnected: ${reason}.`);
-    });
-
-    this._socket.on(ESocketEvents.Ipaddr, function (ipaddr) {
-      console.log('Server IP address is: ' + ipaddr);
-    });
-
-    this._socket.on(ESocketEvents.Hello, (mySocketId: string) => {
-      console.log(`Connected to server. Your ID is "${mySocketId}"`);
-
-      this._myId = mySocketId;
-
-      const me = new User(mediaStreamService.stream, {
-        roomId: roomId,
-        userId: this._myId
+      // Leaving rooms and disconnecting from peers.
+      this._socket.on(ESocketEvents.Disconnect, function (reason) {
+        console.log(`Disconnected: ${reason}.`);
       });
+
+      this._socket.on(ESocketEvents.Ipaddr, function (ipaddr) {
+        console.log('Server IP address is: ' + ipaddr);
+      });
+
+      this._socket.on(ESocketEvents.Hello, (mySocketId: string) => {
+        console.log(`Connected to server. Your ID is "${mySocketId}"`);
+
+        this._myId = mySocketId;
+
+        resolve(this._myId);
+      });
+
+      if (location.hostname.match(/localhost|127\.0\.0/)) {
+        this._socket.emit(ESocketEvents.Ipaddr);
+      }
+
+      window.addEventListener(ESocketEvents.Unload, () => {
+        console.log(`Unloading window. Notifying peers in ${roomId}.`);
+
+        this._socket.emit(ESocketEvents.Bye, roomId);
+      });
+
+      // Joining a room.
+      this._socket.emit(ESocketEvents.CreateOrJoin, roomId);
     });
-
-    if (location.hostname.match(/localhost|127\.0\.0/)) {
-      this._socket.emit(ESocketEvents.Ipaddr);
-    }
-
-    window.addEventListener(ESocketEvents.Unload, () => {
-      console.log(`Unloading window. Notifying peers in ${roomId}.`);
-
-      this._socket.emit(ESocketEvents.Bye, roomId);
-    });
-
-    // Joining a room.
-    this._socket.emit(ESocketEvents.CreateOrJoin, roomId);
   }
 
   sendMessage(message: Record<string, unknown>, toClientId?: string) {

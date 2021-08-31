@@ -1,10 +1,8 @@
-import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
-import app, { App, EAppEvents } from '../../app';
+import { html } from 'lit';
+import { customElement, } from 'lit/decorators.js';
+import app, { App } from '../../app';
 import { BaseComponent } from '../../classes/base.component';
 import { ScreenShareController } from '../../reactive-controllers/screen-share.controller';
-import { connectionService } from '../../services';
-import { mediaStreamService } from '../../services/media-stream.service';
 import { repeat } from 'lit/directives/repeat.js';
 
 import componentStyles from './screen-share.scss';
@@ -20,34 +18,23 @@ export class ScreenShare extends BaseComponent {
     super();
 
     this._app = app;
-    this._screenShareController = new ScreenShareController(this, this._app, connectionService);
+    this._screenShareController = new ScreenShareController(this, this._app);
   }
 
   render() {
-    const remoteStreamsArr = Array.from(
-      this._screenShareController.remoteStreams,
-      ([name, value]) => (value)
-    );
+    const users = this._app.users.toArray();
 
     return html`
       <div class="screen-share">
-        <button @click=${() => this.shareScreen()}>Toggle Screen Share</button>
-        <user-card show-controls="true" .stream=${this._screenShareController.stream}></user-card>
-        <div style="display: flex; flex-direction: column">
-          <h3>Remote Streams</h3>
-
-          <div class="screen-share__remote-streams">
-            ${repeat(remoteStreamsArr, (item) => item.id, (item) => html`
-                <user-card .stream=${item}></user-card>
-              `
-            )}
-          </div>
+        <div class="screen-share__remote-streams">
+          ${repeat(users, (user) => user.userID, (user) => html`
+              <user-card .user=${user}></user-card>
+            `
+          )}
         </div>
+        <main-screen-user class="screen-share__main-screen"></main-screen-user>
+        <user-controls class="screen-share__controls"></user-controls>
       </div>
     `;
-  }
-
-  private shareScreen() {
-    mediaStreamService.toggleVideo();
   }
 }

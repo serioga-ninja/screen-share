@@ -5,6 +5,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { BaseComponent } from '../../classes/base.component';
 import { WebStreamController } from '../../reactive-controllers/web-stream.controller';
+import { User } from '../../user';
 
 import componentStyles from './user-card.scss';
 
@@ -19,7 +20,7 @@ export class UserCardComponent extends BaseComponent {
   videoElement?: HTMLVideoElement[];
 
   @property()
-  stream?: MediaStream;
+  user?: User;
 
   @property({ type: Boolean, attribute: 'show-controls' })
   showControls = false;
@@ -27,11 +28,11 @@ export class UserCardComponent extends BaseComponent {
   connectedCallback() {
     super.connectedCallback();
 
-    this._webStreamController = new WebStreamController(this, this.stream);
+    this._webStreamController = new WebStreamController(this, this.user.stream);
 
     setTimeout(() => {
       const videoElem = this.shadowRoot.querySelector('video');
-      videoElem.srcObject = this.stream as MediaStream;
+      videoElem.srcObject = this.user.stream;
       if (this.showControls) {
         videoElem.muted = true;
       }
@@ -39,7 +40,7 @@ export class UserCardComponent extends BaseComponent {
   }
 
   render() {
-    const stream = this.stream;
+    const stream = this.user.stream;
 
     return html`
       <div class="user-card">

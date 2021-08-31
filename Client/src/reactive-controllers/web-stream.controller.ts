@@ -13,8 +13,5 @@ export class WebStreamController implements ReactiveController {
   }
 
   hostConnected() {
-    this._stream.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, () => {
-      this.host.requestUpdate()
-    });
   }
 }

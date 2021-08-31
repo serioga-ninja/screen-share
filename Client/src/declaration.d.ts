@@ -1,4 +1,4 @@
 declare module '*.scss' {
-  const content: CSSResultArray;
+  const content: CSSResult;
   export default content;
 }
