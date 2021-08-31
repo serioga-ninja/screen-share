@@ -1,13 +1,10 @@
-import { Socket } from 'socket.io-client';
-import { sendMessage, socket } from '../socket-connection';
+import { ESocketEvents, ISocketMessage } from '../../../Shared';
+import socketConnectionService, { SocketConnectionService } from '../socket-connection';
 import { MediaStreamService, mediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
 
 export enum EConnectionServiceEvents {
   PeerConnectionTrack = 'peerconnectiontrack',
-}
-
-export interface IOnPeerConnectionOptions {
-  ontrack: (ev: RTCTrackEvent) => any;
+  OfferAccepted = 'offeraccepted',
 }
 
 const defaultPCConfiguration = {
@@ -28,11 +25,33 @@ export class ConnectionService extends EventTarget {
     return this._peers;
   }
 
-  constructor(private _socket: Socket, private _webCamService: MediaStreamService) {
+  constructor(private _socketConnectionService: SocketConnectionService,
+              private _mediaStreamService: MediaStreamService) {
     super();
 
     this._pendingCandidates = {};
     this._peers = {};
+  }
+
+  init() {
+    this._socketConnectionService.on(ESocketEvents.Message, async (message: ISocketMessage) => {
+      await this.handleSignalingData(message);
+    });
+
+    this._socketConnectionService.on(ESocketEvents.Joined, async (clientId: string) => {
+      console.log(`User ${clientId} joined`);
+
+      const pc = await this.createPeerConnection(clientId);
+
+      await this.sendOffer(clientId);
+
+      this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.OfferAccepted, {
+        detail: {
+          pc: pc,
+          sendByClientId: clientId
+        }
+      }));
+    });
   }
 
   hasPeerWithClient(clientId: string): boolean {
@@ -51,7 +70,7 @@ export class ConnectionService extends EventTarget {
     this._pendingCandidates[clientId].push(candidate);
   }
 
-  createPeerConnection(clientId: string, options: IOnPeerConnectionOptions): RTCPeerConnection {
+  createPeerConnection(clientId: string): RTCPeerConnection {
     if (this._peers[clientId]) return this._peers[clientId];
 
     console.log(`Creating Peer connection for ${clientId}`);
@@ -60,11 +79,11 @@ export class ConnectionService extends EventTarget {
 
     // send any ice candidates to the other peer
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
-    pc.ontrack = options.ontrack;
+    pc.ontrack = (e) => this.onPeerConnectionTrack(e, clientId);
     // pc.onnegotiationneeded = () => this.handleNegotiationNeededEvent(clientId);
     pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
 
-    this.connectToStream(this._webCamService.stream, pc);
+    this.connectToStream(this._mediaStreamService.stream, pc);
 
     return this._peers[clientId] = pc;
   }
@@ -92,7 +111,7 @@ export class ConnectionService extends EventTarget {
 
     console.log(`Sending ${sessionDescription.type} to ${clientId}`, sessionDescription);
 
-    sendMessage({ type: sessionDescription.type, sdp: sessionDescription.sdp }, clientId);
+    this._socketConnectionService.sendMessage({ type: sessionDescription.type, sdp: sessionDescription.sdp }, clientId);
   }
 
   addIceCandidate(clientId: string, candidate: RTCIceCandidateInit) {
@@ -107,11 +126,54 @@ export class ConnectionService extends EventTarget {
     }
   }
 
+  private async handleSignalingData(message: ISocketMessage) {
+    const { sendByClientId, payload } = message;
+
+    console.log(`Received ${payload.type} from ${sendByClientId}`);
+
+    switch (payload.type) {
+      case 'offer':
+        const pc = await this.createPeerConnection(sendByClientId);
+
+        await this.setRemoteDescription(sendByClientId, payload);
+
+        const sdp = await this.sendAnswer(sendByClientId);
+
+        await this.setAndSendLocalDescription(sendByClientId, sdp);
+
+        await this.addPendingCandidates(sendByClientId);
+
+        this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.OfferAccepted, {
+          detail: {
+            pc: pc,
+            sendByClientId
+          }
+        }));
+        break;
+      case 'answer':
+        await this.setRemoteDescription(
+          sendByClientId,
+          new RTCSessionDescription(payload)
+        );
+        break;
+      case 'candidate':
+        if (this.hasPeerWithClient(sendByClientId)) {
+          await this.addIceCandidate(sendByClientId, payload.candidate);
+        } else {
+          if (!this.hasPendingCandidate(sendByClientId)) {
+            this.resetPendingCandidates(sendByClientId);
+          }
+          this.addToPendingCandidates(sendByClientId, payload.candidate)
+        }
+        break;
+    }
+  }
+
   private onICECandidate(event: RTCPeerConnectionIceEvent, clientId: string) {
     if (event.candidate) {
       console.log(`Sending candidate to ${clientId}`);
 
-      sendMessage({
+      this._socketConnectionService.sendMessage({
         type: 'candidate',
         label: event.candidate.sdpMLineIndex,
         id: event.candidate.sdpMid,
@@ -166,6 +228,17 @@ export class ConnectionService extends EventTarget {
       console.log('*** The following error occurred while handling the negotiationneeded event:');
     }
   }
+
+  private onPeerConnectionTrack(event: RTCTrackEvent, clientId: string) {
+    console.log(`*** Peer connection ${clientId} received new track`);
+
+    this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.PeerConnectionTrack, {
+      detail: {
+        clientId,
+        onTrackEvent: event
+      }
+    }));
+  }
 }
 
-export const connectionService = new ConnectionService(socket, mediaStreamService);
+export const connectionService = new ConnectionService(socketConnectionService, mediaStreamService);

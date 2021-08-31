@@ -1,45 +1,33 @@
-import { Socket } from 'socket.io-client/build/socket';
-import { ISocketMessage } from '../../Shared/core/all';
-import { connectionService, ConnectionService, EConnectionServiceEvents } from './services';
-import { MediaStreamService } from './services';
+import { ESocketEvents, randomToken } from '../../Shared';
+import { ConnectionService, connectionService, MediaStreamService, mediaStreamService } from './services';
+import socketConnectionService, { SocketConnectionService } from './socket-connection';
 
 export enum EAppEvents {
-  OfferAccepted = 'offeraccepted',
   UserLeft = 'userleft',
 }
 
 export class App extends EventTarget {
-  constructor(private _socket: Socket,
-              private _webCamService: MediaStreamService,
-              private _connectionService: ConnectionService) {
+  private readonly _roomId: string;
+
+  constructor(private _socketConnectionService: SocketConnectionService,
+              private _connectionService: ConnectionService,
+              private _mediaStreamService: MediaStreamService) {
     super();
 
-    _socket.on('message', async (message: ISocketMessage) => {
-      await this.handleSignalingData(message);
-    });
+    // Create a random room if not already present in the URL.
+    this._roomId = window.location.hash.substring(1);
+    if (!this._roomId) {
+      this._roomId = window.location.hash = randomToken();
+    }
+  }
 
-    _socket.on('joined', async (clientId: string) => {
-      console.log(`User ${clientId} joined`);
+  async init() {
+    await mediaStreamService.useWebCamVideo();
 
-      const pc = await _connectionService.createPeerConnection(
-        clientId,
-        {
-          ontrack: (event: RTCTrackEvent) => this.onPeerConnectionTrack(clientId, event)
-        }
-      );
+    this._socketConnectionService.init(this._roomId);
+    this._connectionService.init();
 
-      await connectionService.sendOffer(clientId);
-
-      this.dispatchEvent(new CustomEvent(EAppEvents.OfferAccepted, {
-        detail: {
-          pc: pc,
-          sendByClientId: clientId
-        }
-      }));
-    });
-
-
-    _socket.on('bye', ({ id }) => {
+    this._socketConnectionService.on(ESocketEvents.Bye, ({ id }) => {
       console.log(`Client ${id} leaving room.`);
 
       this.dispatchEvent(new CustomEvent(EAppEvents.UserLeft, {
@@ -49,66 +37,8 @@ export class App extends EventTarget {
       }));
     });
   }
-
-  private async handleSignalingData(message: ISocketMessage) {
-    const { sendByClientId, payload } = message;
-
-    console.log(`Received ${payload.type} from ${sendByClientId}`);
-
-    switch (payload.type) {
-      case 'offer':
-        await this._webCamService.useWebCamVideo();
-
-        const pc = await this._connectionService.createPeerConnection(
-          sendByClientId,
-          {
-            ontrack: (event: RTCTrackEvent) => this.onPeerConnectionTrack(sendByClientId, event)
-          }
-        );
-
-        await this._connectionService.setRemoteDescription(sendByClientId, payload);
-
-        const sdp = await this._connectionService.sendAnswer(sendByClientId);
-
-        await this._connectionService.setAndSendLocalDescription(sendByClientId, sdp);
-
-        await this._connectionService.addPendingCandidates(sendByClientId);
-
-        this.dispatchEvent(new CustomEvent(EAppEvents.OfferAccepted, {
-          detail: {
-            pc: pc,
-            sendByClientId
-          }
-        }));
-        break;
-      case 'answer':
-        await this._connectionService.setRemoteDescription(
-          sendByClientId,
-          new RTCSessionDescription(payload)
-        );
-        break;
-      case 'candidate':
-        if (this._connectionService.hasPeerWithClient(sendByClientId)) {
-          await this._connectionService.addIceCandidate(sendByClientId, payload.candidate);
-        } else {
-          if (!this._connectionService.hasPendingCandidate(sendByClientId)) {
-            this._connectionService.resetPendingCandidates(sendByClientId);
-          }
-          this._connectionService.addToPendingCandidates(sendByClientId, payload.candidate)
-        }
-        break;
-    }
-  }
-
-  private onPeerConnectionTrack(clientId: string, event: RTCTrackEvent) {
-    console.log(`*** Peer connection ${clientId} received new track`);
-
-    this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.PeerConnectionTrack, {
-      detail: {
-        clientId,
-        onTrackEvent: event
-      }
-    }));
-  }
-
 }
+
+const app = new App(socketConnectionService, connectionService, mediaStreamService);
+
+export default app;

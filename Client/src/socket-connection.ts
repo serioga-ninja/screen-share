@@ -1,50 +1,77 @@
 import { io } from 'socket.io-client';
-import { ISocketMessage } from '../../Shared/core/all';
+import { Socket } from 'socket.io-client/build/socket';
+import { log } from 'util';
+import { ESocketEvents } from '../../Shared';
+import { mediaStreamService } from './services/media-stream.service';
+import { User } from './user';
 
-let myId: string;
-let room: string;
 
-export const socket = io();
+export class SocketConnectionService {
+  private _myId: string;
+  private _roomId: string;
+  private _socket: Socket;
 
-export function initializeSockets(room: string) {
-// Leaving rooms and disconnecting from peers.
-  socket.on('disconnect', function (reason) {
-    console.log(`Disconnected: ${reason}.`);
-  });
+  constructor() {
+    this._socket = io();
+  }
 
-  socket.on('ipaddr', function (ipaddr) {
-    console.log('Server IP address is: ' + ipaddr);
-  });
+  init(roomId: string) {
+    this._roomId = roomId;
 
-  socket.on('hello', function (mySocketId: string) {
-    console.log(`Connected to server. Your ID is "${mySocketId}"`);
+    // Leaving rooms and disconnecting from peers.
+    this._socket.on(ESocketEvents.Disconnect, function (reason) {
+      console.log(`Disconnected: ${reason}.`);
+    });
 
-    myId = mySocketId;
-  });
+    this._socket.on(ESocketEvents.Ipaddr, function (ipaddr) {
+      console.log('Server IP address is: ' + ipaddr);
+    });
 
-  // Joining a room.
-  socket.emit('create or join', room);
+    this._socket.on(ESocketEvents.Hello, (mySocketId: string) => {
+      console.log(`Connected to server. Your ID is "${mySocketId}"`);
+
+      this._myId = mySocketId;
+
+      const me = new User(mediaStreamService.stream, {
+        roomId: roomId,
+        userId: this._myId
+      });
+    });
+
+    if (location.hostname.match(/localhost|127\.0\.0/)) {
+      this._socket.emit(ESocketEvents.Ipaddr);
+    }
+
+    window.addEventListener(ESocketEvents.Unload, () => {
+      console.log(`Unloading window. Notifying peers in ${roomId}.`);
+
+      this._socket.emit(ESocketEvents.Bye, roomId);
+    });
+
+    // Joining a room.
+    this._socket.emit(ESocketEvents.CreateOrJoin, roomId);
+  }
+
+  sendMessage(message: Record<string, unknown>, toClientId?: string) {
+    this.emit(ESocketEvents.Message, {
+      roomId: this._roomId,
+      payload: message,
+      sendByClientId: this._myId,
+      sendToClientId: toClientId
+    })
+  }
+
+  emit(ev: ESocketEvents, body?: any) {
+    this._socket.emit(ev, body);
+  }
+
+  on(ev: ESocketEvents, cb: any) {
+    this._socket.on(ev, (...args) => {
+      cb(...args);
+    });
+  }
 }
 
-if (location.hostname.match(/localhost|127\.0\.0/)) {
-  socket.emit('ipaddr');
-}
+const socketConnectionService = new SocketConnectionService();
 
-window.addEventListener('unload', function () {
-  console.log(`Unloading window. Notifying peers in ${room}.`);
-  socket.emit('bye', room);
-});
-
-/**
- * Send message to signaling server
- */
-export function sendMessage(message: Record<string, unknown>, toClientId?: string) {
-  const sendingMessage: ISocketMessage = {
-    roomId: window.location.hash.substring(1),
-    payload: message,
-    sendByClientId: myId,
-    sendToClientId: toClientId
-  };
-
-  socket.emit('message', sendingMessage);
-}
+export default socketConnectionService;

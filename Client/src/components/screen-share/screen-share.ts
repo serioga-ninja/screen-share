@@ -1,16 +1,16 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { App, EAppEvents } from '../../app';
-import { connectionService, EConnectionServiceEvents } from '../../services/connection.service';
+import app, { App, EAppEvents } from '../../app';
+import { BaseComponent } from '../../classes/base.component';
 import { ScreenShareController } from '../../reactive-controllers/screen-share.controller';
-import { socket } from '../../socket-connection';
+import { connectionService } from '../../services';
 import { mediaStreamService } from '../../services/media-stream.service';
 import { repeat } from 'lit/directives/repeat.js';
 
 import componentStyles from './screen-share.scss';
 
 @customElement('screen-share')
-export class ScreenShare extends LitElement {
+export class ScreenShare extends BaseComponent {
   static styles = [componentStyles];
 
   private readonly _app: App;
@@ -19,10 +19,8 @@ export class ScreenShare extends LitElement {
   constructor() {
     super();
 
-    this._app = new App(
-      socket, mediaStreamService, connectionService
-    );
-    this._screenShareController = new ScreenShareController(this, this._app);
+    this._app = app;
+    this._screenShareController = new ScreenShareController(this, this._app, connectionService);
   }
 
   render() {

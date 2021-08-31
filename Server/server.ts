@@ -3,6 +3,7 @@ import nodeStatic from 'node-static';
 import http from 'http';
 import path from 'path';
 import { Server } from 'socket.io';
+import { ESocketEvents } from '../Shared';
 import { ISocketMessage } from '../Shared/core/all';
 import 'dotenv';
 
@@ -32,7 +33,7 @@ io.sockets.on('connection', function (socket) {
     socket.emit('log', array);
   }
 
-  socket.on('message', function (message: ISocketMessage) {
+  socket.on(ESocketEvents.Message, function (message: ISocketMessage) {
     if (message.sendToClientId) {
       io.to(message.sendToClientId).emit('message', message);
     } else {
@@ -40,11 +41,11 @@ io.sockets.on('connection', function (socket) {
     }
   });
 
-  socket.on('create or join', function (room) {
+  socket.on(ESocketEvents.CreateOrJoin, function (room) {
     console.log('Received request to create or join room ' + room);
 
     const clientsInRoom = io.sockets.adapter.rooms.get(room);
-    const numClients = clientsInRoom?.size || 0;
+    const numClients = (clientsInRoom?.size || 0) + 1;
 
     console.log('Client ID ' + socket.id + ' joined room ' + room);
 
@@ -55,31 +56,29 @@ io.sockets.on('connection', function (socket) {
     io.sockets
       .in(room)
       .except(socket.id)
-      .emit('joined', socket.id);
+      .emit(ESocketEvents.Joined, socket.id);
 
-    socket.emit('joined to room');
-
-
-    socket.emit('hello', socket.id);
+    socket.emit(ESocketEvents.Hello, socket.id);
   });
 
-  socket.on('ipaddr', function () {
+  socket.on(ESocketEvents.Ipaddr, function () {
     const ifaces = os.networkInterfaces();
+
     for (let dev in ifaces) {
       ifaces[dev]?.forEach(function (details) {
         if (details.family === 'IPv4' && details.address !== '127.0.0.1') {
-          socket.emit('ipaddr', details.address);
+          socket.emit(ESocketEvents.Ipaddr, details.address);
         }
       });
     }
   });
 
-  socket.on('disconnect', function (reason) {
+  socket.on(ESocketEvents.Disconnect, function (reason) {
     console.log(`Peer or server disconnected. Reason: ${reason}.`);
     socket.broadcast.emit('bye', { id: socket.id });
   });
 
-  socket.on('bye', function (room) {
+  socket.on(ESocketEvents.Bye, function (room) {
     console.log(`Peer said bye on room ${room}.`);
   });
 });

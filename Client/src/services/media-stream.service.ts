@@ -5,7 +5,7 @@ export enum MediaStreamServiceEvents {
 }
 
 export enum EVideoType {
-  webCam,
+  WebCam,
   Screen
 }
 
@@ -23,7 +23,7 @@ export class MediaStreamService extends EventTarget {
   }
 
   toggleVideo() {
-    if (this._selectedVideoType === EVideoType.webCam) {
+    if (this._selectedVideoType === EVideoType.WebCam) {
       this.useScreenVideo();
     } else {
       this.useWebCamVideo();
@@ -104,7 +104,7 @@ export class MediaStreamService extends EventTarget {
   }
 
   async useWebCamVideo(): Promise<void> {
-    if (this._selectedVideoType === EVideoType.webCam) return;
+    if (this._selectedVideoType === EVideoType.WebCam) return;
 
     if (!this._webCamTrack || !this._audioTrack) await this.requestUserMedia();
 
@@ -123,7 +123,7 @@ export class MediaStreamService extends EventTarget {
       this.addTrack(this._webCamTrack);
     }
 
-    this._selectedVideoType = EVideoType.webCam;
+    this._selectedVideoType = EVideoType.WebCam;
   }
 
   streamContainsTrack(track: MediaStreamTrack): boolean {

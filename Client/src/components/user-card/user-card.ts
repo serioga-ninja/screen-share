@@ -3,12 +3,13 @@ import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, queryAll } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { BaseComponent } from '../../classes/base.component';
 import { WebStreamController } from '../../reactive-controllers/web-stream.controller';
 
 import componentStyles from './user-card.scss';
 
 @customElement('user-card')
-export class UserCardComponent extends LitElement {
+export class UserCardComponent extends BaseComponent {
 
   static styles = [componentStyles];
 
