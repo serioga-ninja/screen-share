@@ -29,7 +29,11 @@ export class UserCardComponent extends LitElement {
     this._webStreamController = new WebStreamController(this, this.stream);
 
     setTimeout(() => {
-      this.shadowRoot.querySelector('video').srcObject = this.stream as MediaStream;
+      const videoElem = this.shadowRoot.querySelector('video');
+      videoElem.srcObject = this.stream as MediaStream;
+      if (this.showControls) {
+        videoElem.muted = true;
+      }
     }, 100);
   }
 
@@ -38,7 +42,7 @@ export class UserCardComponent extends LitElement {
 
     return html`
       <div class="user-card">
-        <video class="user-card__video" autoplay playsinline ?muted="${this.showControls}"></video>
+        <video class="user-card__video" autoplay playsinline></video>
         <div class="user-card__controls" ?hidden="${!this.showControls}">
           ${repeat(stream?.getTracks() || [], (item) => item.id, (item) => html`
               <button type="button"
