@@ -9,10 +9,6 @@ export interface IUserOptions {
 const MIN_MAIN_SCREEN_TIME_MS = 10000;
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); // define audio context
-const analyser = audioCtx.createAnalyser();
-analyser.minDecibels = -90;
-analyser.maxDecibels = -10;
-analyser.smoothingTimeConstant = 0.85;
 
 
 const defaultOptions: Partial<IUserOptions> = {
@@ -34,8 +30,12 @@ export class User {
     return videoTrack?.enabled;
   }
 
+  get audioScore() {
+    return this._audioScore;
+  }
+
   private _collection?: UsersCollection;
-  private _dataArray: Uint8Array;
+  private _audioScore = 0;
 
   constructor(private _stream: MediaStream, options: Partial<IUserOptions> = {}) {
     options = {
@@ -45,18 +45,24 @@ export class User {
 
     Object.assign(this, options);
 
-    this._dataArray = new Uint8Array(analyser.frequencyBinCount);
+    this.collectAudioScore();
+  }
+
+  private collectAudioScore() {
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = context.createAnalyser();
+
+    const source = context.createMediaStreamSource(this._stream);
+    source.connect(analyser);
+
+    analyser.fftSize = 2048;
+
+    const frequencyData = new Uint8Array(analyser.frequencyBinCount);
 
     setInterval(() => {
+      analyser.getByteTimeDomainData(frequencyData);
 
-      const source = audioCtx.createMediaStreamSource(_stream);
-      source.connect(analyser);
-      analyser.fftSize = 2048;
-      var bufferLength = analyser.frequencyBinCount; // half the FFT value
-      var dataArray = new Uint8Array(bufferLength); // create an array to store the data
-      analyser.getByteTimeDomainData(dataArray); // get waveform data and put it into the array created above
-
-      console.log(dataArray.reduce((res, n) => res + n, 0));
+      this._audioScore = frequencyData.reduce((res, num) => res + num, 0);
     }, 1000);
   }
 

@@ -33,7 +33,7 @@ export class UserCardComponent extends BaseComponent {
     setTimeout(() => {
       const videoElem = this.shadowRoot.querySelector('video');
       videoElem.srcObject = this.user.stream;
-      if (this.showControls) {
+      if (this.user.currentUser) {
         videoElem.muted = true;
       }
     }, 100);
@@ -44,19 +44,7 @@ export class UserCardComponent extends BaseComponent {
 
     return html`
       <div class="user-card">
-        <video class="user-card__video" autoplay playsinline></video>
-        <div class="user-card__controls" ?hidden="${!this.showControls}">
-          ${repeat(stream?.getTracks() || [], (item) => item.id, (item) => html`
-              <button type="button"
-                      class=${classMap({
-                        red: !item.enabled,
-                        green: item.enabled
-                      })}
-                      @click=${() => this.toggleTrack(item)}>${item.kind}
-              </button>
-            `
-          )}
-        </div>
+        <video class="user-card__video" autoplay playsinline ?muted=${this.user.currentUser}></video>
       </div>
     `;
   }
