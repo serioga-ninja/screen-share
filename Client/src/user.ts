@@ -1,3 +1,4 @@
+import { MediaStreamServiceEvents } from './services';
 import { UsersCollection } from './users-collection';
 
 export interface IUserOptions {
@@ -34,8 +35,13 @@ export class User {
     return this._audioScore;
   }
 
+  get pc() {
+    return this._pc;
+  }
+
   private _collection?: UsersCollection;
   private _audioScore = 0;
+  private _pc: RTCPeerConnection;
 
   constructor(private _stream: MediaStream, options: Partial<IUserOptions> = {}) {
     options = {
@@ -45,7 +51,7 @@ export class User {
 
     Object.assign(this, options);
 
-    this.collectAudioScore();
+    // this.collectAudioScore();
   }
 
   private collectAudioScore() {
@@ -71,10 +77,13 @@ export class User {
   }
 
   setPeerConnection(pc: RTCPeerConnection) {
+    this._pc = pc;
+
     pc.addEventListener('track', (event) => {
       event.streams[0].getTracks().forEach((track: MediaStreamTrack) => {
         this.stream.addTrack(track);
       });
+      this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.VideoStreamUpdated));
     });
 
     this._collection.set(this.userID, this);

@@ -2,6 +2,7 @@ import { Subject } from 'rxjs';
 
 export enum MediaStreamServiceEvents {
   ReplaceTrackJSEvent = 'replacerackjs',
+  VideoStreamUpdated = 'videostreamupdated',
 }
 
 export enum EVideoType {
@@ -141,6 +142,7 @@ export class MediaStreamService extends EventTarget {
         to: track
       }
     }));
+    this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.VideoStreamUpdated));
   }
 }
 

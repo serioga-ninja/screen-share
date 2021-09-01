@@ -76,7 +76,7 @@ export class ConnectionService extends EventTarget {
   }
 
   createPeerConnection(clientId: string): RTCPeerConnection {
-    if (this._peers[clientId]) return this._peers[clientId];
+    if (this.getPC(clientId)) return this.getPC(clientId);
 
     console.log(`Creating Peer connection for ${clientId}`);
 
@@ -86,6 +86,7 @@ export class ConnectionService extends EventTarget {
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
     pc.ontrack = (e) => this.onPeerConnectionTrack(e, clientId);
     pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
+    pc.onnegotiationneeded = () => this.onNegotiationNeeded(clientId);
 
     this.connectToStream(pc);
 
@@ -99,13 +100,24 @@ export class ConnectionService extends EventTarget {
     return this._peers[clientId] = pc;
   }
 
-  setRemoteDescription(clientId: string, payload: any): Promise<void> {
+  private async onNegotiationNeeded(clientId: string) {
+    const pc = this._peers[clientId];
+
+    try {
+      const offer = await pc.createOffer();
+      await this.setAndSendLocalDescription(clientId, offer);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  private setRemoteDescription(clientId: string, payload: any): Promise<void> {
     return this._peers[clientId].setRemoteDescription(
       new RTCSessionDescription(payload)
     );
   }
 
-  async sendOffer(clientId: string) {
+  private async sendOffer(clientId: string) {
     console.log(`Sending offer to ${clientId}`);
 
     const sdp = await this._peers[clientId].createOffer();
@@ -113,7 +125,7 @@ export class ConnectionService extends EventTarget {
     await this.setAndSendLocalDescription(clientId, sdp);
   }
 
-  async sendAnswer(clientId: string) {
+  private async createAnswer(clientId: string) {
     return this._peers[clientId].createAnswer();
   };
 
@@ -140,15 +152,21 @@ export class ConnectionService extends EventTarget {
   private async handleSignalingData(message: ISocketMessage) {
     const { sendByClientId, payload } = message;
 
-    console.log(`Received ${payload.type} from ${sendByClientId}`);
+    console.log(`Received ${payload.type} from ${sendByClientId}`, payload);
 
     switch (payload.type) {
       case 'offer':
         const pc = await this.createPeerConnection(sendByClientId);
 
-        await this.setRemoteDescription(sendByClientId, payload);
+        if (pc.signalingState !== 'stable') {
+          await Promise.all([
+            pc.setLocalDescription({ type: 'rollback' }).catch(() => {
+            }), // ignore failure
+            await this.setRemoteDescription(sendByClientId, payload)
+          ]);
+        }
 
-        const sdp = await this.sendAnswer(sendByClientId);
+        const sdp = await this.createAnswer(sendByClientId);
 
         await this.setAndSendLocalDescription(sendByClientId, sdp);
 
@@ -162,9 +180,10 @@ export class ConnectionService extends EventTarget {
         }));
         break;
       case 'answer':
+        console.log('STATE', this.getPC(sendByClientId).signalingState);
         await this.setRemoteDescription(
           sendByClientId,
-          new RTCSessionDescription(payload)
+          payload
         );
         break;
       case 'candidate':
@@ -203,18 +222,22 @@ export class ConnectionService extends EventTarget {
       this._trackSenders.set(track, sender);
     }
 
-    stream.addEventListener(MediaStreamServiceEvents.ReplaceTrackJSEvent, ((event: CustomEvent<{ from: MediaStreamTrack; to: MediaStreamTrack; }>) => {
+    stream.addEventListener(MediaStreamServiceEvents.ReplaceTrackJSEvent, (async (event: CustomEvent<{ from: MediaStreamTrack; to: MediaStreamTrack; }>) => {
       const { from, to } = event.detail;
 
       const fromSender = this._trackSenders.get(from);
       if (fromSender) {
-        fromSender.replaceTrack(to);
+        await fromSender.replaceTrack(to);
 
         this._trackSenders.set(to, fromSender);
+      } else if (!this._trackSenders.get(to)) {
+        const sender = pc.addTrack(to, stream);
+
+        this._trackSenders.set(to, sender);
       } else {
         console.error(`Track ${from} not found`)
       }
-    }) as EventListener);
+    }) as any);
   }
 
   private handleICEGatheringStateChangeEvent(pc: RTCPeerConnection) {
@@ -230,6 +253,10 @@ export class ConnectionService extends EventTarget {
         onTrackEvent: event
       }
     }));
+  }
+
+  private getPC(clientID: string): RTCPeerConnection | undefined {
+    return this._peers[clientID];
   }
 }
 

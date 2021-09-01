@@ -5,6 +5,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { BaseComponent } from '../../classes/base.component';
 import { WebStreamController } from '../../reactive-controllers/web-stream.controller';
+import { MediaStreamServiceEvents } from '../../services';
 import { User } from '../../user';
 
 import componentStyles from './user-card.scss';
@@ -30,10 +31,17 @@ export class UserCardComponent extends BaseComponent {
 
     this._webStreamController = new WebStreamController(this, this.user.stream);
 
+    this.user.stream.addEventListener(MediaStreamServiceEvents.VideoStreamUpdated, () => {
+      const videoElem = this.shadowRoot.querySelector('video');
+      videoElem.srcObject = this.user.stream;
+    });
+
     setTimeout(() => {
       const videoElem = this.shadowRoot.querySelector('video');
       videoElem.srcObject = this.user.stream;
+
       if (this.user.currentUser) {
+        const videoElem = this.shadowRoot.querySelector('video');
         videoElem.muted = true;
       }
     }, 100);

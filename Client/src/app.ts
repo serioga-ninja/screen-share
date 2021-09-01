@@ -66,11 +66,15 @@ export class App extends EventTarget {
     this._socketConnectionService.on(ESocketEvents.Bye, ({ id }) => {
       console.log(`Client ${id} leaving room.`);
 
+      const user = this.users.get(id);
+
       this.dispatchEvent(new CustomEvent(EAppEvents.UserLeft, {
         detail: {
-          user: this.users.get(id)
+          user
         }
       }));
+
+      user.pc?.close();
 
       this.users.delete(id);
     });
