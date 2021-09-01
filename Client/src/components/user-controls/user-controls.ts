@@ -22,34 +22,40 @@ export class UserControls extends BaseComponent {
     const videoTrack = mediaStreamService.stream.getVideoTracks()[0];
 
     return html`
-      ${!audioTrack ? '' : html`
-        <button type="button"
-                class=${classMap({
-                  red: !audioTrack.enabled,
-                  green: audioTrack.enabled
-                })}
-                @click=${() => this.toggleTrack(audioTrack)}>${audioTrack.kind}
-        </button>
-      `}
-      ${!videoTrack ? '' : html`
-        <button type="button"
-                class=${classMap({
-                  red: !videoTrack.enabled,
-                  green: videoTrack.enabled
-                })}
-                @click=${() => this.toggleTrack(videoTrack)}>${videoTrack.kind}
-        </button>
-      `}
+      <button type="button"
+              class=${classMap({
+                red: !audioTrack?.enabled,
+                green: audioTrack?.enabled
+              })}
+              @click=${() => this.toggleAudio()}>Audio
+      </button>
+      <button type="button"
+              class=${classMap({
+                red: !videoTrack?.enabled,
+                green: videoTrack?.enabled
+              })}
+              @click=${() => this.toggleWebCam()}>WebCam
+      </button>
     `;
   }
 
-  protected toggleTrack(track: MediaStreamTrack) {
-    track.enabled = !track.enabled;
+  async toggleAudio() {
+    if (!mediaStreamService.hasAudio) {
+      await mediaStreamService.useAudio();
+    } else {
+      mediaStreamService.audioTrack.enabled = !mediaStreamService.audioTrack.enabled;
+    }
 
     this.requestUpdate();
   }
 
-  private shareScreen() {
-    mediaStreamService.toggleVideo();
+  async toggleWebCam() {
+    if (!mediaStreamService.webCamInProgress) {
+      await mediaStreamService.useWebCamVideo();
+    } else {
+      mediaStreamService.turnOffWebCam();
+    }
+
+    this.requestUpdate();
   }
 }

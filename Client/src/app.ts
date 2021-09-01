@@ -38,7 +38,6 @@ export class App extends EventTarget {
   }
 
   async init() {
-    await mediaStreamService.useWebCamVideo();
     const userId = await this._socketConnectionService.init(this._roomId);
 
     const currentUser = new User(mediaStreamService.stream, {

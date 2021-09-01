@@ -60,7 +60,7 @@ export class ConnectionService extends EventTarget {
   }
 
   hasPeerWithClient(clientId: string): boolean {
-    return clientId in this._peers;
+    return clientId in this._peers && this.getPC(clientId).signalingState === 'stable';
   }
 
   hasPendingCandidate(clientId: string): boolean {
@@ -86,7 +86,7 @@ export class ConnectionService extends EventTarget {
     pc.onicecandidate = (e) => this.onICECandidate(e, clientId);
     pc.ontrack = (e) => this.onPeerConnectionTrack(e, clientId);
     pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
-    pc.onnegotiationneeded = () => this.onNegotiationNeeded(clientId);
+    pc.onnegotiationneeded = (ev) => this.onNegotiationNeeded(clientId, ev);
 
     this.connectToStream(pc);
 
@@ -100,8 +100,11 @@ export class ConnectionService extends EventTarget {
     return this._peers[clientId] = pc;
   }
 
-  private async onNegotiationNeeded(clientId: string) {
-    const pc = this._peers[clientId];
+  private async onNegotiationNeeded(clientId: string, ev: Event) {
+    const pc = this.getPC(clientId);
+
+    if (pc.connectionState !== 'connected') return;
+    console.log('*** Negotiation Needed', ev);
 
     try {
       const offer = await pc.createOffer();
@@ -120,7 +123,7 @@ export class ConnectionService extends EventTarget {
   private async sendOffer(clientId: string) {
     console.log(`Sending offer to ${clientId}`);
 
-    const sdp = await this._peers[clientId].createOffer();
+    const sdp = await this.getPC(clientId).createOffer();
 
     await this.setAndSendLocalDescription(clientId, sdp);
   }
@@ -129,7 +132,7 @@ export class ConnectionService extends EventTarget {
     return this._peers[clientId].createAnswer();
   };
 
-  async setAndSendLocalDescription(clientId: string, sessionDescription: RTCSessionDescriptionInit) {
+  private async setAndSendLocalDescription(clientId: string, sessionDescription: RTCSessionDescriptionInit) {
     await this._peers[clientId].setLocalDescription(sessionDescription);
 
     console.log(`Sending ${sessionDescription.type} to ${clientId}`, sessionDescription);
@@ -137,11 +140,11 @@ export class ConnectionService extends EventTarget {
     this._socketConnectionService.sendMessage({ type: sessionDescription.type, sdp: sessionDescription.sdp }, clientId);
   }
 
-  addIceCandidate(clientId: string, candidate: RTCIceCandidateInit) {
+  private addIceCandidate(clientId: string, candidate: RTCIceCandidateInit) {
     return this.peers[clientId].addIceCandidate(new RTCIceCandidate(candidate));
   }
 
-  async addPendingCandidates(clientId: string) {
+  private async addPendingCandidates(clientId: string) {
     if (clientId in this._pendingCandidates) {
       for await (const candidate of this._pendingCandidates[clientId]) {
         await this._peers[clientId].addIceCandidate(new RTCIceCandidate(candidate))
@@ -158,13 +161,7 @@ export class ConnectionService extends EventTarget {
       case 'offer':
         const pc = await this.createPeerConnection(sendByClientId);
 
-        if (pc.signalingState !== 'stable') {
-          await Promise.all([
-            pc.setLocalDescription({ type: 'rollback' }).catch(() => {
-            }), // ignore failure
-            await this.setRemoteDescription(sendByClientId, payload)
-          ]);
-        }
+        await this.setRemoteDescription(sendByClientId, payload);
 
         const sdp = await this.createAnswer(sendByClientId);
 
@@ -180,7 +177,6 @@ export class ConnectionService extends EventTarget {
         }));
         break;
       case 'answer':
-        console.log('STATE', this.getPC(sendByClientId).signalingState);
         await this.setRemoteDescription(
           sendByClientId,
           payload
@@ -221,6 +217,17 @@ export class ConnectionService extends EventTarget {
       const sender = pc.addTrack(track, stream);
       this._trackSenders.set(track, sender);
     }
+
+    stream.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, (async (event: CustomEvent<{ track: MediaStreamTrack; }>) => {
+      const { track } = event.detail;
+
+      const fromSender = this._trackSenders.get(track);
+      if (fromSender) return;
+
+      const sender = pc.addTrack(track, stream);
+
+      this._trackSenders.set(track, sender);
+    }) as any);
 
     stream.addEventListener(MediaStreamServiceEvents.ReplaceTrackJSEvent, (async (event: CustomEvent<{ from: MediaStreamTrack; to: MediaStreamTrack; }>) => {
       const { from, to } = event.detail;
