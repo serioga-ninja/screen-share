@@ -18,7 +18,6 @@ export enum EAppEvents {
 
 export class App extends EventTarget {
   readonly users: UsersCollection = new UsersCollection();
-  mainScreenUser: User;
   mainScreenLogic: MainScreenLogic;
 
   private readonly _roomId: string;
@@ -48,8 +47,6 @@ export class App extends EventTarget {
 
     this.users.set(userId, currentUser);
 
-    this.mainScreenUser = currentUser;
-
     this._connectionService.init(currentUser);
 
     this._connectionService.addEventListener(EConnectionServiceEvents.PeerConnectionCreated, ((event: CustomEvent<{ pc: RTCPeerConnection, clientId: string; }>) => {
@@ -66,6 +63,8 @@ export class App extends EventTarget {
       console.log(`Client ${id} leaving room.`);
 
       const user = this.users.get(id);
+
+      if (!user) return;
 
       this.dispatchEvent(new CustomEvent(EAppEvents.UserLeft, {
         detail: {

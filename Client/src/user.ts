@@ -7,11 +7,6 @@ export interface IUserOptions {
   currentUser: boolean;
 }
 
-const MIN_MAIN_SCREEN_TIME_MS = 10000;
-
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)(); // define audio context
-
-
 const defaultOptions: Partial<IUserOptions> = {
   currentUser: false
 } as const;
@@ -55,7 +50,7 @@ export class User {
   }
 
   private collectAudioScore() {
-    const context = new (window.AudioContext || window.webkitAudioContext)();
+    const context = new (window.AudioContext || (window as any).webkitAudioContext)();
     const analyser = context.createAnalyser();
 
     const source = context.createMediaStreamSource(this._stream);

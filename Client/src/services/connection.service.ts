@@ -53,12 +53,6 @@ export class ConnectionService extends EventTarget {
     });
   }
 
-  addToPendingCandidates(clientId: string, candidate: RTCIceCandidateInit) {
-    if (!this._pendingCandidates[clientId]) this._pendingCandidates[clientId] = [];
-
-    this._pendingCandidates[clientId].push(candidate);
-  }
-
   createPeerConnection(clientId: string): ConnectionWrapper {
     if (this.getPCWrapper(clientId)) return this.getPCWrapper(clientId);
 
@@ -107,12 +101,6 @@ export class ConnectionService extends EventTarget {
     }
   }
 
-  private setRemoteDescription(clientId: string, payload: any): Promise<void> {
-    return this.getPC(clientId).setRemoteDescription(
-      new RTCSessionDescription(payload)
-    );
-  }
-
   private async sendOffer(clientId: string) {
     console.log(`Sending offer to ${clientId}`);
 
@@ -120,10 +108,6 @@ export class ConnectionService extends EventTarget {
 
     await this.setAndSendLocalDescription(clientId, sdp);
   }
-
-  private async createAnswer(clientId: string) {
-    return this.getPC(clientId).createAnswer();
-  };
 
   private async setAndSendLocalDescription(clientId: string, sessionDescription?: RTCSessionDescriptionInit) {
     const pc = this.getPC(clientId);
@@ -135,10 +119,6 @@ export class ConnectionService extends EventTarget {
     this._socketConnectionService.sendMessage({
       description: pc.localDescription
     }, clientId);
-  }
-
-  private addIceCandidate(clientId: string, candidate: RTCIceCandidateInit) {
-    return this.getPC(clientId).addIceCandidate(new RTCIceCandidate(candidate));
   }
 
   private async addPendingCandidates(clientId: string) {
@@ -276,20 +256,6 @@ export class ConnectionService extends EventTarget {
 
   private getPCWrapper(clientID: string): ConnectionWrapper | undefined {
     return this._peers.get(clientID);
-  }
-
-  private connectionIsStable(clientID: string): boolean {
-    return this.getPC(clientID).connectionState === 'connected';
-  }
-
-  private waitForState(pc: RTCPeerConnection, state: RTCSignalingState): Promise<void> {
-    if (pc.signalingState === state) return;
-
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve(this.waitForState(pc, state));
-      }, 100);
-    });
   }
 }
 

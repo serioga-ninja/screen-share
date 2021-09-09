@@ -7,6 +7,18 @@ export enum UsersCollectionEvents {
 export class UsersCollection extends EventTarget {
   private _map: Map<string, User> = new Map<string, User>();
 
+  get length() {
+    return this._map.size;
+  }
+
+  get currentUser(): User | undefined {
+    return this.toArray().find((user) => user.currentUser);
+  }
+
+  get firstNotCurrentUser(): User | undefined {
+    return this.toArray().find((user) => !user.currentUser);
+  }
+
   toArray(): User[] {
     return Array.from(this._map).map(([_userID, user]) => user);
   }
