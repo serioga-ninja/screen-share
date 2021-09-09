@@ -1,4 +1,5 @@
 import { ESocketEvents, ISocketMessage } from '../../../Shared';
+import { ConnectionWrapper } from '../classes';
 import socketConnectionService, { SocketConnectionService } from '../socket-connection';
 import { User } from '../user';
 import { MediaStreamService, mediaStreamService, MediaStreamServiceEvents } from './media-stream.service';
@@ -19,21 +20,14 @@ const defaultPCConfiguration = {
 };
 
 export class ConnectionService extends EventTarget {
-  private readonly _peers: Record<string, RTCPeerConnection>;
-  private readonly _pendingCandidates: Record<string, RTCIceCandidateInit[]>;
+  private readonly _peers: Map<string, ConnectionWrapper> = new Map;
+  private readonly _pendingCandidates: Map<string, RTCIceCandidateInit[]> = new Map;
   private _trackSenders: WeakMap<MediaStreamTrack, RTCRtpSender> = new WeakMap;
   private _currentUser: User;
-
-  get peers() {
-    return this._peers;
-  }
 
   constructor(private _socketConnectionService: SocketConnectionService,
               private _mediaStreamService: MediaStreamService) {
     super();
-
-    this._pendingCandidates = {};
-    this._peers = {};
   }
 
   init(user: User) {
@@ -46,37 +40,27 @@ export class ConnectionService extends EventTarget {
     this._socketConnectionService.on(ESocketEvents.Joined, async (clientId: string) => {
       console.log(`User ${clientId} joined`);
 
-      const pc = await this.createPeerConnection(clientId);
+      const pcWrapper = await this.createPeerConnection(clientId);
 
       await this.sendOffer(clientId);
 
       this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.OfferAccepted, {
         detail: {
-          pc: pc,
+          pc: pcWrapper.pc,
           sendByClientId: clientId
         }
       }));
     });
   }
 
-  hasPeerWithClient(clientId: string): boolean {
-    return clientId in this._peers && this.getPC(clientId).signalingState === 'stable';
-  }
-
-  hasPendingCandidate(clientId: string): boolean {
-    return clientId in this._pendingCandidates;
-  }
-
-  resetPendingCandidates(clientId: string) {
-    this._pendingCandidates[clientId] = [];
-  }
-
   addToPendingCandidates(clientId: string, candidate: RTCIceCandidateInit) {
+    if (!this._pendingCandidates[clientId]) this._pendingCandidates[clientId] = [];
+
     this._pendingCandidates[clientId].push(candidate);
   }
 
-  createPeerConnection(clientId: string): RTCPeerConnection {
-    if (this.getPC(clientId)) return this.getPC(clientId);
+  createPeerConnection(clientId: string): ConnectionWrapper {
+    if (this.getPCWrapper(clientId)) return this.getPCWrapper(clientId);
 
     console.log(`Creating Peer connection for ${clientId}`);
 
@@ -87,6 +71,14 @@ export class ConnectionService extends EventTarget {
     pc.ontrack = (e) => this.onPeerConnectionTrack(e, clientId);
     pc.onicegatheringstatechange = () => this.handleICEGatheringStateChangeEvent(pc);
     pc.onnegotiationneeded = (ev) => this.onNegotiationNeeded(clientId, ev);
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'failed') {
+        pc.restartIce();
+      }
+    };
+    pc.onsignalingstatechange = (ev) => {
+      console.log(`*** PC for client ${clientId} Signaling state change to ${pc.signalingState}`);
+    };
 
     this.connectToStream(pc);
 
@@ -97,25 +89,26 @@ export class ConnectionService extends EventTarget {
       }
     }));
 
-    return this._peers[clientId] = pc;
+    return this.setPC(clientId, pc);
   }
 
   private async onNegotiationNeeded(clientId: string, ev: Event) {
-    const pc = this.getPC(clientId);
+    const pcWrapper = this.getPCWrapper(clientId);
 
-    if (pc.connectionState !== 'connected') return;
     console.log('*** Negotiation Needed', ev);
 
     try {
-      const offer = await pc.createOffer();
-      await this.setAndSendLocalDescription(clientId, offer);
+      pcWrapper.makingOffer = true;
+      await this.setAndSendLocalDescription(clientId);
     } catch (err) {
       console.error(err);
+    } finally {
+      pcWrapper.makingOffer = false;
     }
   }
 
   private setRemoteDescription(clientId: string, payload: any): Promise<void> {
-    return this._peers[clientId].setRemoteDescription(
+    return this.getPC(clientId).setRemoteDescription(
       new RTCSessionDescription(payload)
     );
   }
@@ -129,69 +122,67 @@ export class ConnectionService extends EventTarget {
   }
 
   private async createAnswer(clientId: string) {
-    return this._peers[clientId].createAnswer();
+    return this.getPC(clientId).createAnswer();
   };
 
-  private async setAndSendLocalDescription(clientId: string, sessionDescription: RTCSessionDescriptionInit) {
-    await this._peers[clientId].setLocalDescription(sessionDescription);
+  private async setAndSendLocalDescription(clientId: string, sessionDescription?: RTCSessionDescriptionInit) {
+    const pc = this.getPC(clientId);
 
-    console.log(`Sending ${sessionDescription.type} to ${clientId}`, sessionDescription);
+    await pc.setLocalDescription(sessionDescription);
 
-    this._socketConnectionService.sendMessage({ type: sessionDescription.type, sdp: sessionDescription.sdp }, clientId);
+    console.log(`Sending local description to ${clientId}`, sessionDescription);
+
+    this._socketConnectionService.sendMessage({
+      description: pc.localDescription
+    }, clientId);
   }
 
   private addIceCandidate(clientId: string, candidate: RTCIceCandidateInit) {
-    return this.peers[clientId].addIceCandidate(new RTCIceCandidate(candidate));
+    return this.getPC(clientId).addIceCandidate(new RTCIceCandidate(candidate));
   }
 
   private async addPendingCandidates(clientId: string) {
-    if (clientId in this._pendingCandidates) {
-      for await (const candidate of this._pendingCandidates[clientId]) {
-        await this._peers[clientId].addIceCandidate(new RTCIceCandidate(candidate))
-      }
-    }
+    let candidate;
+    while (candidate = (this._pendingCandidates[clientId] || []).shift())
+      await this.getPC(clientId).addIceCandidate(new RTCIceCandidate(candidate))
   }
 
-  private async handleSignalingData(message: ISocketMessage) {
+  private async handleSignalingData(message: ISocketMessage<{ type: string; description: RTCSessionDescription; candidate: RTCIceCandidate; }>) {
     const { sendByClientId, payload } = message;
+    const { description, candidate } = payload;
 
-    console.log(`Received ${payload.type} from ${sendByClientId}`, payload);
+    console.log(`Received ${description?.type || 'candidate'} from ${sendByClientId}`, payload);
 
-    switch (payload.type) {
-      case 'offer':
-        const pc = await this.createPeerConnection(sendByClientId);
+    if (description) {
+      const pcWrapper = await this.createPeerConnection(sendByClientId);
+      // An offer may come in while we are busy processing SRD(answer).
+      // In this case, we will be in "stable" by the time the offer is processed
+      // so it is safe to chain it on our Operations Chain now.
+      const readyForOffer =
+        !pcWrapper.makingOffer &&
+        (pcWrapper.pc.signalingState == 'stable' || pcWrapper.isSettingRemoteAnswerPending);
+      pcWrapper.ignoreOffer = description.type == 'offer' && !readyForOffer;
 
-        await this.setRemoteDescription(sendByClientId, payload);
+      if (pcWrapper.ignoreOffer) {
+        return;
+      }
 
-        const sdp = await this.createAnswer(sendByClientId);
+      pcWrapper.isSettingRemoteAnswerPending = description.type === 'answer';
+      await pcWrapper.pc.setRemoteDescription(description);
+      pcWrapper.isSettingRemoteAnswerPending = false;
 
-        await this.setAndSendLocalDescription(sendByClientId, sdp);
-
-        await this.addPendingCandidates(sendByClientId);
-
-        this.dispatchEvent(new CustomEvent(EConnectionServiceEvents.OfferAccepted, {
-          detail: {
-            pc: pc,
-            sendByClientId
-          }
-        }));
-        break;
-      case 'answer':
-        await this.setRemoteDescription(
-          sendByClientId,
-          payload
-        );
-        break;
-      case 'candidate':
-        if (this.hasPeerWithClient(sendByClientId)) {
-          await this.addIceCandidate(sendByClientId, payload.candidate);
-        } else {
-          if (!this.hasPendingCandidate(sendByClientId)) {
-            this.resetPendingCandidates(sendByClientId);
-          }
-          this.addToPendingCandidates(sendByClientId, payload.candidate)
+      if (description.type == 'offer') {
+        await this.setAndSendLocalDescription(sendByClientId);
+      }
+    } else if (candidate) {
+      const pcWrapper = await this.createPeerConnection(sendByClientId);
+      try {
+        await pcWrapper.pc.addIceCandidate(candidate);
+      } catch (err) {
+        if (!pcWrapper.ignoreOffer) {
+          throw err;
         }
-        break;
+      }
     }
   }
 
@@ -217,6 +208,15 @@ export class ConnectionService extends EventTarget {
       const sender = pc.addTrack(track, stream);
       this._trackSenders.set(track, sender);
     }
+
+    stream.addEventListener(MediaStreamServiceEvents.RemoveTrackJSEvent, (async (event: CustomEvent<{ track: MediaStreamTrack; }>) => {
+      const { track } = event.detail;
+
+      const fromSender = this._trackSenders.get(track);
+      if (!fromSender) return;
+
+      pc.removeTrack(fromSender);
+    }) as any);
 
     stream.addEventListener(MediaStreamServiceEvents.AddTrackJSEvent, (async (event: CustomEvent<{ track: MediaStreamTrack; }>) => {
       const { track } = event.detail;
@@ -262,8 +262,34 @@ export class ConnectionService extends EventTarget {
     }));
   }
 
+  private setPC(clientID: string, pc: RTCPeerConnection): ConnectionWrapper {
+    const pcWrapper = new ConnectionWrapper(clientID, pc);
+
+    this._peers.set(clientID, pcWrapper);
+
+    return pcWrapper;
+  }
+
   private getPC(clientID: string): RTCPeerConnection | undefined {
-    return this._peers[clientID];
+    return this._peers.get(clientID).pc;
+  }
+
+  private getPCWrapper(clientID: string): ConnectionWrapper | undefined {
+    return this._peers.get(clientID);
+  }
+
+  private connectionIsStable(clientID: string): boolean {
+    return this.getPC(clientID).connectionState === 'connected';
+  }
+
+  private waitForState(pc: RTCPeerConnection, state: RTCSignalingState): Promise<void> {
+    if (pc.signalingState === state) return;
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve(this.waitForState(pc, state));
+      }, 100);
+    });
   }
 }
 

@@ -15,8 +15,6 @@ export class UserCardComponent extends BaseComponent {
 
   static styles = [componentStyles];
 
-  private _webStreamController?: WebStreamController;
-
   @queryAll('video.user-card__video')
   videoElement?: HTMLVideoElement[];
 
@@ -29,21 +27,12 @@ export class UserCardComponent extends BaseComponent {
   connectedCallback() {
     super.connectedCallback();
 
-    this._webStreamController = new WebStreamController(this, this.user.stream);
-
-    this.user.stream.addEventListener(MediaStreamServiceEvents.VideoStreamUpdated, () => {
-      const videoElem = this.shadowRoot.querySelector('video');
-      videoElem.srcObject = this.user.stream;
-    });
-
     setTimeout(() => {
       const videoElem = this.shadowRoot.querySelector('video');
       videoElem.srcObject = this.user.stream;
-
-      if (this.user.currentUser) {
-        const videoElem = this.shadowRoot.querySelector('video');
-        videoElem.muted = true;
-      }
+      videoElem.muted = true;
+      videoElem.autoplay = true;
+      videoElem.playsInline = true;
     }, 100);
   }
 
@@ -52,7 +41,7 @@ export class UserCardComponent extends BaseComponent {
 
     return html`
       <div class="user-card">
-        <video class="user-card__video" autoplay playsinline ?muted=${this.user.currentUser}></video>
+        <video class="user-card__video" autoplay playsinline></video>
       </div>
     `;
   }

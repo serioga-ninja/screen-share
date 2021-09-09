@@ -18,8 +18,9 @@ export class UserControls extends BaseComponent {
   }
 
   protected render() {
-    const audioTrack = mediaStreamService.stream.getAudioTracks()[0];
-    const videoTrack = mediaStreamService.stream.getVideoTracks()[0];
+    const audioTrack = mediaStreamService.audioTrack;
+    const webCamTrack = mediaStreamService.webCamTrack;
+    const screenShareTrack = mediaStreamService.screenShareTrack;
 
     return html`
       <button type="button"
@@ -31,10 +32,17 @@ export class UserControls extends BaseComponent {
       </button>
       <button type="button"
               class=${classMap({
-                red: !videoTrack?.enabled,
-                green: videoTrack?.enabled
+                red: !webCamTrack?.enabled,
+                green: webCamTrack?.enabled
               })}
               @click=${() => this.toggleWebCam()}>WebCam
+      </button>
+      <button type="button"
+              class=${classMap({
+                red: !screenShareTrack?.enabled,
+                green: screenShareTrack?.enabled
+              })}
+              @click=${() => this.toggleScreenShare()}>Share Screen
       </button>
     `;
   }
@@ -54,6 +62,16 @@ export class UserControls extends BaseComponent {
       await mediaStreamService.useWebCamVideo();
     } else {
       mediaStreamService.turnOffWebCam();
+    }
+
+    this.requestUpdate();
+  }
+
+  async toggleScreenShare() {
+    if (!mediaStreamService.screenShareInProgress) {
+      await mediaStreamService.useScreenVideo();
+    } else {
+      mediaStreamService.turnOffScreenShare();
     }
 
     this.requestUpdate();

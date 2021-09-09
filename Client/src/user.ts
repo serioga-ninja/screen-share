@@ -79,11 +79,24 @@ export class User {
   setPeerConnection(pc: RTCPeerConnection) {
     this._pc = pc;
 
-    pc.addEventListener('track', (event) => {
-      event.streams[0].getTracks().forEach((track: MediaStreamTrack) => {
+    pc.addEventListener('track', ({ track, transceiver }) => {
+      track.onunmute = () => {
+        if (track.kind === 'video' && this.stream.getVideoTracks().length > 0) {
+          this.stream.removeTrack(
+            this.stream.getVideoTracks()[0]
+          );
+        } else if (track.kind === 'audio' && this.stream.getAudioTracks().length > 0) {
+          this.stream.removeTrack(
+            this.stream.getAudioTracks()[0]
+          );
+        }
+
         this.stream.addTrack(track);
-      });
-      this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.VideoStreamUpdated));
+
+        track.onended = () => {
+          this.stream.removeTrack(track);
+        }
+      };
     });
 
     this._collection.set(this.userID, this);

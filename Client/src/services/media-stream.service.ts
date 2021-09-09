@@ -3,6 +3,7 @@ import { Subject } from 'rxjs';
 export enum MediaStreamServiceEvents {
   ReplaceTrackJSEvent = 'replacerackjs',
   AddTrackJSEvent = 'addtrack',
+  RemoveTrackJSEvent = 'removetrack',
   VideoStreamUpdated = 'videostreamupdated',
 }
 
@@ -38,18 +39,24 @@ export class MediaStreamService extends EventTarget {
     return this._audioTrack;
   }
 
-  get videoTrack() {
-    return this._stream.getVideoTracks()[0];
+  get webCamTrack() {
+    return this._webCamTrack;
+  }
+
+  get screenShareTrack() {
+    return this._screenTrack;
   }
 
   turnOffWebCam() {
-    this._webCamTrack.enabled = false;
     this._webCamTrack.stop();
+    this.removeTrack(this._webCamTrack);
+    this._webCamTrack = null;
   }
 
   turnOffScreenShare() {
-    this._screenTrack.enabled = false;
     this._screenTrack.stop();
+    this.removeTrack(this._screenTrack);
+    this._screenTrack = null;
   }
 
   async useScreenVideo(): Promise<void> {
@@ -110,6 +117,7 @@ export class MediaStreamService extends EventTarget {
       });
 
       this._webCamTrack = stream.getVideoTracks()[0];
+      this._webCamTrack.enabled = true;
     } catch (e) {
       console.error(e);
     }
@@ -133,6 +141,7 @@ export class MediaStreamService extends EventTarget {
       });
 
       this._audioTrack = stream.getAudioTracks()[0];
+      this._audioTrack.enabled = true;
     } catch (e) {
       console.error(e);
     }
@@ -145,6 +154,7 @@ export class MediaStreamService extends EventTarget {
       const stream: MediaStream = await (navigator.mediaDevices as any).getDisplayMedia();
 
       this._screenTrack = stream.getVideoTracks()[0];
+      this._screenTrack.enabled = true;
     } catch (e) {
       console.error(e);
     }
@@ -174,6 +184,18 @@ export class MediaStreamService extends EventTarget {
     this._stream.addTrack(track);
 
     this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.AddTrackJSEvent, {
+      detail: {
+        track
+      }
+    }));
+  }
+
+  private removeTrack(track: MediaStreamTrack): void {
+    if (!this.streamContainsTrack(track)) return;
+
+    this._stream.removeTrack(track);
+
+    this._stream.dispatchEvent(new CustomEvent(MediaStreamServiceEvents.RemoveTrackJSEvent, {
       detail: {
         track
       }

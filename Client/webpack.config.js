@@ -52,7 +52,7 @@ module.exports = (args) => {
           test: /\.(ts|js)x?$/,
           exclude: /(node_modules|bower_components|libs)/,
           use: {
-            loader: 'babel-loader'
+            loader: 'ts-loader'
           },
         },
         {
