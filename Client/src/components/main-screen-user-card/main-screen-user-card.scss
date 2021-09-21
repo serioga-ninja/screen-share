@@ -1,4 +1,6 @@
-.user-card {
+.main-screen-user-card {
+  height: 100%;
+  margin: 10px;
   position: relative;
 
   &__user-name {
@@ -9,12 +11,12 @@
     height: 20px;
     line-height: 20px;
     text-align: center;
-
   }
 
   &__video {
     border: 1px solid #e3e3e3;
     height: 100%;
-    width: 250px;
+    margin: 0 auto;
+    display: block;
   }
 }

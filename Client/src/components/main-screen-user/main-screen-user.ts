@@ -3,9 +3,12 @@ import { customElement } from 'lit/decorators.js';
 import app from '../../app';
 import { BaseComponent } from '../../classes';
 import { User } from '../../user';
+import componentStyles from './main-screen-user.scss';
 
 @customElement('main-screen-user')
 export class MainScreenUser extends BaseComponent {
+  static styles = [componentStyles];
+
   user: User;
 
   constructor() {
@@ -23,7 +26,7 @@ export class MainScreenUser extends BaseComponent {
 
 
     return html`
-      <user-card .user=${this.user}></user-card>
+      <main-screen-user-card .user=${this.user}></main-screen-user-card>
     `;
   }
 }

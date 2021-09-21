@@ -9,7 +9,10 @@ export class MainScreenLogic {
   nextMainScreenUser: User;
 
   constructor(private _users: UsersCollection) {
-    _users.addEventListener(UsersCollectionEvents.Updated, () => this.userAdded());
+    _users.addEventListener(UsersCollectionEvents.Updated, () => {
+      this.userAdded();
+      this.selectUser();
+    });
 
     setTimeout(() => {
       this.selectUser();

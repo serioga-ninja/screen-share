@@ -23,27 +23,29 @@ export class UserControls extends BaseComponent {
     const screenShareTrack = mediaStreamService.screenShareTrack;
 
     return html`
-      <button type="button"
-              class=${classMap({
-                red: !audioTrack?.enabled,
-                green: audioTrack?.enabled
-              })}
-              @click=${() => this.toggleAudio()}>Audio
-      </button>
-      <button type="button"
-              class=${classMap({
-                red: !webCamTrack?.enabled,
-                green: webCamTrack?.enabled
-              })}
-              @click=${() => this.toggleWebCam()}>WebCam
-      </button>
-      <button type="button"
-              class=${classMap({
-                red: !screenShareTrack?.enabled,
-                green: screenShareTrack?.enabled
-              })}
-              @click=${() => this.toggleScreenShare()}>Share Screen
-      </button>
+      <div class="user-controls">
+        <button type="button"
+                class=${classMap({
+                  red: !audioTrack?.enabled,
+                  green: audioTrack?.enabled
+                })}
+                @click=${() => this.toggleAudio()}>Audio
+        </button>
+        <button type="button"
+                class=${classMap({
+                  red: !webCamTrack?.enabled,
+                  green: webCamTrack?.enabled
+                })}
+                @click=${() => this.toggleWebCam()}>WebCam
+        </button>
+        <button type="button"
+                class=${classMap({
+                  red: !screenShareTrack?.enabled,
+                  green: screenShareTrack?.enabled
+                })}
+                @click=${() => this.toggleScreenShare()}>Share Screen
+        </button>
+      </div>
     `;
   }
 

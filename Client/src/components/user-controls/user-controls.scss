@@ -1,10 +1,26 @@
-button {
+.user-controls {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin: 10px;
 
-  &.red {
-    color: red;
+  button {
+    margin-left: 10px;
+    cursor: pointer;
+
+    &:first-child {
+      margin-left: 0;
+    }
+
+    &.red {
+      color: red;
+    }
+
+    &.green {
+      color: green;
+    }
   }
 
-  &.green {
-    color: green;
-  }
 }

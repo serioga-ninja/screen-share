@@ -1,22 +1,17 @@
-import { query } from 'express';
 import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, queryAll } from 'lit/decorators.js';
-import { classMap } from 'lit/directives/class-map.js';
-import { repeat } from 'lit/directives/repeat.js';
 import app from '../../app';
-import { BaseComponent } from '../../classes/base.component';
-import { WebStreamController } from '../../reactive-controllers/web-stream.controller';
-import { MediaStreamServiceEvents } from '../../services';
 import { User } from '../../user';
+import { UserCardComponent } from '../user-card/user-card';
 
-import componentStyles from './user-card.scss';
+import componentStyles from './main-screen-user-card.scss';
 
-@customElement('user-card')
-export class UserCardComponent extends BaseComponent {
+@customElement('main-screen-user-card')
+export class MainScreenUserCardComponent extends UserCardComponent {
 
   static styles = [componentStyles];
 
-  @queryAll('video.user-card__video')
+  @queryAll('video')
   videoElement?: HTMLVideoElement[];
 
   @property()
@@ -42,9 +37,9 @@ export class UserCardComponent extends BaseComponent {
     const userName = this.user.userID === app.currentUser.userID ? 'You' : this.user.userID;
 
     return html`
-      <div class="user-card">
-        <h3 class="user-card__user-name">${userName}</h3>
-        <video class="user-card__video" autoplay playsinline></video>
+      <div class="main-screen-user-card">
+        <h3 class="main-screen-user-card__user-name">${userName}</h3>
+        <video class="main-screen-user-card__video" autoplay playsinline></video>
       </div>
     `;
   }

@@ -17,8 +17,10 @@ export enum EAppEvents {
 }
 
 export class App extends EventTarget {
-  readonly users: UsersCollection = new UsersCollection();
-  mainScreenLogic: MainScreenLogic;
+  public currentUser: User;
+  public mainScreenLogic: MainScreenLogic;
+
+  public readonly users: UsersCollection = new UsersCollection();
 
   private readonly _roomId: string;
 
@@ -39,15 +41,15 @@ export class App extends EventTarget {
   async init() {
     const userId = await this._socketConnectionService.init(this._roomId);
 
-    const currentUser = new User(mediaStreamService.stream, {
+    this.currentUser = new User(mediaStreamService.stream, {
       roomID: this._roomId,
       userID: userId,
       currentUser: true
     });
 
-    this.users.set(userId, currentUser);
+    this.users.set(userId, this.currentUser);
 
-    this._connectionService.init(currentUser);
+    this._connectionService.init(this.currentUser);
 
     this._connectionService.addEventListener(EConnectionServiceEvents.PeerConnectionCreated, ((event: CustomEvent<{ pc: RTCPeerConnection, clientId: string; }>) => {
       const { pc, clientId } = event.detail;

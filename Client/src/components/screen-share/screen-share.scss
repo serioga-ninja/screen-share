@@ -1,14 +1,25 @@
 .screen-share {
   height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 
-  &__remote-streams {
+  > * {
     display: flex;
+  }
+
+  &__remote-streams {
     flex-direction: row;
+    max-height: 200px;
   }
 
   &__main-screen {
     flex-grow: 1;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  user-controls {
+    height: 50px;
   }
 }
