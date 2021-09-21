@@ -22,11 +22,8 @@ export class MainScreenUser extends BaseComponent {
   }
 
   protected render() {
-    if (!this.user) return '';
-
-
     return html`
-      <main-screen-user-card .user=${this.user}></main-screen-user-card>
+      <main-screen-user-card></main-screen-user-card>
     `;
   }
 }

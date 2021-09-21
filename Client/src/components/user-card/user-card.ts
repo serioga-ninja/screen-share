@@ -38,8 +38,7 @@ export class UserCardComponent extends BaseComponent {
   }
 
   render() {
-    const stream = this.user.stream;
-    const userName = this.user.userID === app.currentUser.userID ? 'You' : this.user.userID;
+    const userName = this.user.userID === app.currentUser.userID ? `You (${this.user.userID})` : this.user.userID;
 
     return html`
       <div class="user-card">
